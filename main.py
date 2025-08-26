@@ -223,10 +223,7 @@ if __name__ == '__main__':
             writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
             writer.add_scalar('train/grad_norm', grad_norm, global_step)
             global_step += 1
-        save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"global_step{global_step}.training_loss={loss:.4f}")
-        save_dir.mkdir(parents=True, exist_ok=True)
-        
-        torch.save(model.state_dict(), save_dir / "model.pt")
+
         model.eval()
         valid_loss_sum = 0
         valid_top1_acc_sum = 0
