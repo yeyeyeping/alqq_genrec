@@ -151,9 +151,9 @@ if __name__ == '__main__':
     seed_everything(const.seed)
     
     dataset = MyDataset(const.data_path)
-    train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
-    train_loader = build_dataloader(train_dataset, const.batch_size, const.num_workers, True)
-    valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)
+    # train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
+    train_loader = build_dataloader(dataset, const.batch_size, const.num_workers, True)
+    # valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)
     
     
     model = BaselineModel().to(const.device)
@@ -227,45 +227,45 @@ if __name__ == '__main__':
         save_dir.mkdir(parents=True, exist_ok=True)
         
         torch.save(model.state_dict(), save_dir / "model.pt")
-        model.eval()
-        valid_loss_sum = 0
-        valid_top1_acc_sum = 0
-        valid_top10_acc_sum = 0
-        valid_sim_pos_sum = 0
-        valid_sim_neg_sum = 0
-        valid_sim_gap_sum = 0
-        total_sample = 0
-        for step, batch in enumerate(valid_loader):
-            loss, neg_sim, pos_sim, top1_correct, top10_correct, num_sample = valid_one_step(batch, emb_loader, neg_loader, model)
+        # model.eval()
+        # valid_loss_sum = 0
+        # valid_top1_acc_sum = 0
+        # valid_top10_acc_sum = 0
+        # valid_sim_pos_sum = 0
+        # valid_sim_neg_sum = 0
+        # valid_sim_gap_sum = 0
+        # total_sample = 0
+        # for step, batch in enumerate(valid_loader):
+        #     loss, neg_sim, pos_sim, top1_correct, top10_correct, num_sample = valid_one_step(batch, emb_loader, neg_loader, model)
             
-            valid_loss_sum += loss * num_sample
-            valid_top1_acc_sum += top1_correct
-            valid_top10_acc_sum += top10_correct
-            total_sample += num_sample
-            valid_sim_pos_sum += pos_sim * num_sample
-            valid_sim_neg_sum += neg_sim * num_sample
-            valid_sim_gap_sum += (pos_sim - neg_sim) * num_sample
+        #     valid_loss_sum += loss * num_sample
+        #     valid_top1_acc_sum += top1_correct
+        #     valid_top10_acc_sum += top10_correct
+        #     total_sample += num_sample
+        #     valid_sim_pos_sum += pos_sim * num_sample
+        #     valid_sim_neg_sum += neg_sim * num_sample
+        #     valid_sim_gap_sum += (pos_sim - neg_sim) * num_sample
         
-        valid_loss = valid_loss_sum / total_sample
-        valid_top1_acc = valid_top1_acc_sum / total_sample
-        valid_top10_acc = valid_top10_acc_sum / total_sample
-        valid_sim_pos = valid_sim_pos_sum / total_sample
-        valid_sim_neg = valid_sim_neg_sum / total_sample
-        valid_sim_gap = valid_sim_gap_sum / total_sample
+        # valid_loss = valid_loss_sum / total_sample
+        # valid_top1_acc = valid_top1_acc_sum / total_sample
+        # valid_top10_acc = valid_top10_acc_sum / total_sample
+        # valid_sim_pos = valid_sim_pos_sum / total_sample
+        # valid_sim_neg = valid_sim_neg_sum / total_sample
+        # valid_sim_gap = valid_sim_gap_sum / total_sample
         
-        print(f"[EVAL] loss: {valid_loss:.4f}, top1 acc: {valid_top1_acc:.4f}, top10 acc: {valid_top10_acc:.4f}, sim_pos: {valid_sim_pos:.4f}, sim_neg: {valid_sim_neg:.4f}, sim_gap: {valid_sim_gap:.4f}")
+        # print(f"[EVAL] loss: {valid_loss:.4f}, top1 acc: {valid_top1_acc:.4f}, top10 acc: {valid_top10_acc:.4f}, sim_pos: {valid_sim_pos:.4f}, sim_neg: {valid_sim_neg:.4f}, sim_gap: {valid_sim_gap:.4f}")
         
-        writer.add_scalar('valid/loss', valid_loss, global_step)
-        writer.add_scalar('valid/top1_acc', valid_top1_acc, global_step)
-        writer.add_scalar('valid/top10_acc', valid_top10_acc, global_step)
-        writer.add_scalar('valid/sim_pos', valid_sim_pos, global_step)
-        writer.add_scalar('valid/sim_neg', valid_sim_neg, global_step)
-        writer.add_scalar('valid/sim_gap', valid_sim_gap, global_step)
+        # writer.add_scalar('valid/loss', valid_loss, global_step)
+        # writer.add_scalar('valid/top1_acc', valid_top1_acc, global_step)
+        # writer.add_scalar('valid/top10_acc', valid_top10_acc, global_step)
+        # writer.add_scalar('valid/sim_pos', valid_sim_pos, global_step)
+        # writer.add_scalar('valid/sim_neg', valid_sim_neg, global_step)
+        # writer.add_scalar('valid/sim_gap', valid_sim_gap, global_step)
 
-        save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"global_step{global_step}.loss={valid_loss:.4f}.acc_top1={valid_top1_acc:.4f}.acc_top10={valid_top10_acc:.4f}")
-        save_dir.mkdir(parents=True, exist_ok=True)
+        # save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"global_step{global_step}.loss={valid_loss:.4f}.acc_top1={valid_top1_acc:.4f}.acc_top10={valid_top10_acc:.4f}")
+        # save_dir.mkdir(parents=True, exist_ok=True)
         
-        torch.save(model.state_dict(), save_dir / "model.pt")
+        # torch.save(model.state_dict(), save_dir / "model.pt")
         
         gc.collect()
     print("Done")
