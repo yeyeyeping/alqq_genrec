@@ -1,0 +1,13 @@
+#!/bin/bash
+export TRAIN_DATA_PATH=/home/yeep/project/algo_qq/data/TencentGR_1k
+export EVAL_DATA_PATH=/home/yeep/project/algo_qq/data/test_data
+export MODEL_OUTPUT_PATH=/home/yeep/project/alqq_generc/working_dir/ckpt/global_step4.loss=9.9978.acc_top1=0.0001.acc_top10=0.0006
+
+unzip submit_infer.zip
+cd tmp_infer
+python3 -c "import infer; infer.infer()"
+
+
+
+
+

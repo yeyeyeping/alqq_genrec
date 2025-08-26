@@ -1,0 +1,56 @@
+from utils import read_pickle
+class ModelParam:
+    def __init__(self,indexer_file):
+        self.embedding_table_size = self.read_feature_size(indexer_file)
+        self.embedding_dim = {
+            "user_id":64,
+            "item_id":96,
+            # 物品特征
+            "100": 4,      # 6
+            "101": 6,     # 51
+            "102": 32,     # 90709
+            # "111": 128,    # 4783154
+            "112": 6,     # 30
+            "114": 6,     # 20
+            "115": 12,     # 691
+            "116": 6,     # 18
+            "117": 12,     # 497
+            "118": 16,     # 1426
+            "119": 24,     # 4191
+            "120": 24,     # 3392
+            # "121": 64,    # 2135891
+            "122": 32,     # 90919
+            # 多模态特征
+            "81": 64,
+            "82": 128,
+            "83": 128,
+            "84": 128,
+            "85": 128,
+            "86": 128,
+            # 用户特征
+            "103": 8,     # 86
+            "104": 4,      # 2
+            "105": 4,      # 7
+            "106": 6,     # 14
+            "107": 6,     # 19
+            "108": 4,      # 4
+            "109": 4,      # 3
+            "110": 4       # 2
+        }
+        self.user_dnn_units = 128
+        self.item_dnn_units = 128
+        self.dropout = 0.2
+        self.hidden_units = 256
+        self.num_blocks = 4
+        self.num_heads = 4
+        self.norm_first = True
+    def read_feature_size(self, indexer_file):
+        indexer = read_pickle(indexer_file)
+        emb_table_size = {}
+        emb_table_size['item_id'] = len(indexer['i'])
+        emb_table_size['user_id'] = len(indexer['u'])
+
+        for feat_id, mapping_dict in indexer['f'].items():
+            emb_table_size[feat_id] = len(mapping_dict)
+            
+        return emb_table_size

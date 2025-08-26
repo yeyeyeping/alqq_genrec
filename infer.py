@@ -1,0 +1,126 @@
+import os
+# os.mkdir(os.path.join(os.environ.get("USER_CACHE_PATH"), "tmp"))
+# print(os.listdir(os.environ.get("USER_CACHE_PATH")))
+os.system(f"cd {os.environ.get('EVAL_INFER_PATH')};unzip submit_infer.zip; cp -r tmp_infer/* .")
+import json
+from pathlib import Path
+from model import BaselineModel
+from dataset import MyTestDataset,MyDataset
+from torch.utils.data import DataLoader
+import torch
+import const
+from  mm_emb_loader import Memorymm81Embloader
+from torch.nn import functional as F
+
+def get_ckpt_path():
+    ckpt_path = os.environ.get("MODEL_OUTPUT_PATH")
+    if ckpt_path is None:
+        raise ValueError("MODEL_OUTPUT_PATH is not set")
+    for item in os.listdir(ckpt_path):
+        if item.endswith(".pt"):
+            return os.path.join(ckpt_path, item)
+def to_device(batch):
+    for k,v in batch.items():
+        if isinstance(v, torch.Tensor):
+            batch[k] = v.to(const.device, non_blocking=True)
+    return batch
+
+def next_batched_item(indexer, batch_size=512):
+    candidate_path = Path(os.environ.get('EVAL_DATA_PATH'), 'predict_set.jsonl')
+    with open(candidate_path, 'r') as f:
+        item_id_list = []
+        feature_list = []
+        creative_id_list = []
+        for i, line in enumerate(f):
+            item = json.loads(line)
+            
+            feature, creative_id = item['features'],item['creative_id']
+            item_id = indexer[creative_id] if creative_id in indexer else 0
+            feature = MyTestDataset._process_cold_start_feat(feature)
+            
+            item_id_list.append(item_id)
+            feature_list.append(feature)
+            creative_id_list.append(creative_id)
+            
+            # Yield when we have accumulated batch_size items
+            if len(item_id_list) == batch_size:
+                item_id_tensor = torch.as_tensor(item_id_list)
+                feature_tensor = MyDataset.collect_features(feature_list)
+                creative_id_tensor = torch.as_tensor(creative_id_list)
+                yield item_id_tensor, feature_tensor, creative_id_tensor
+                item_id_list.clear()
+                feature_list.clear()
+                creative_id_list.clear()
+        
+        # Yield any remaining items
+        if item_id_list:
+            item_id_tensor = torch.as_tensor(item_id_list)
+            feature_tensor = MyDataset.collect_features(feature_list)
+            creative_id_tensor = torch.as_tensor(creative_id_list)
+            yield item_id_tensor, feature_tensor, creative_id_tensor
+            
+    
+    
+def infer():
+    torch.set_grad_enabled(False)
+    
+    data_path = os.environ.get('EVAL_DATA_PATH')
+    # 加载数据
+    test_dataset = MyTestDataset(data_path=data_path)
+    dataloader = DataLoader(test_dataset,
+                            batch_size=1024, 
+                            num_workers=18, 
+                            pin_memory=True, 
+                            persistent_workers=True,
+                            prefetch_factor=4)
+    
+    emb_loader = Memorymm81Embloader(data_path)
+    # 加载模型
+    model = BaselineModel().to(const.device)
+    ckpt_path = get_ckpt_path()
+    print(f"load model from {ckpt_path}")
+    model.load_state_dict(torch.load(ckpt_path, map_location=const.device))
+    model.eval()
+    
+    item_features = []
+    item_creative_id = []
+    print(f"start to obtain item features....")
+    for item_id, feature, creative_id in next_batched_item(test_dataset.indexer['i'], const.infer_batch_size):
+        feature = emb_loader.add_mm_emb(item_id, feature)
+        
+        item_id = item_id.to(const.device)
+        feature = to_device(feature)
+        with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
+            item_emb = F.normalize(model.forward_item(item_id, feature), dim=-1)
+        item_features.append(item_emb)
+        item_creative_id.append(creative_id)
+
+    item_features_tensor = torch.cat(item_features, dim=0).to(const.device)
+    item_creative_id_tensor = torch.cat(item_creative_id, dim=0)
+    print(f"loadding {len(item_creative_id_tensor)} item features")
+    print(f"item feature: {item_features_tensor[:10]}")
+    print(f"creative id: {item_creative_id_tensor[:10]}")    
+    
+
+    user_id_list = []
+    top10_item_ids = []
+    print(f"start to predict the next item for {len(dataloader) * const.infer_batch_size} user sequences")
+    for seq_id, token_type, feat_dict, user_id in dataloader:
+        feat_dict = emb_loader.add_mm_emb(seq_id, feat_dict, token_type == 1)
+        
+        seq_id,token_type,feat_dict = seq_id.to(const.device), token_type.to(const.device), to_device(feat_dict)
+        
+        with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
+            next_token_emb = model(seq_id, token_type, feat_dict)
+            next_token_emb = F.normalize(next_token_emb[:,-1,:], dim=-1)
+            sim = next_token_emb @ item_features_tensor.T
+            
+        _, indices = torch.topk(sim, k = 10)
+        top10_item_ids += item_creative_id_tensor[indices.cpu()].tolist()
+        
+        user_id_list += list(user_id)
+    print(f"prediction done")
+    print(f"{top10_item_ids[:10]}")
+    print(f"{user_id_list[:10]}")
+    return top10_item_ids, user_id_list
+   
