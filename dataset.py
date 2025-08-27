@@ -138,26 +138,22 @@ class MyTestDataset(Dataset):
         """
         processed_feat = {}
         for feat_id, feat_value in feat.items():
-            if type(feat_value) == list:
-                value_list = []
-                for v in feat_value:
-                    if type(v) == str:
-                        value_list.append(0)
-                    else:
-                        value_list.append(v)
-                processed_feat[feat_id] = value_list
-            elif type(feat_value) == str:
-                processed_feat[feat_id] = 0
+            if isinstance(feat_value, list):
+                feat_value = [0 if isinstance(v, str) else v for v in feat_value]
+            elif isinstance(feat_value, str):
+                feat_value = 0
             else:
                 processed_feat[feat_id] = feat_value
+            
         return processed_feat
     
     def format_user_seq(self, user_sequence):
         # user_sequence = sorted(user_sequence, key=lambda x: x[-1])
         ext_user_sequence = []
+        user_id = None
         for record_tuple in user_sequence:
             u, i, user_feat, item_feat, _, _ = record_tuple
-            if u:
+            if u and user_id is None:
                 if type(u) == str:  # 如果是字符串，说明是user_id
                     user_id = u
                 else:  # 如果是int，说明是re_id
