@@ -41,8 +41,8 @@ class ModelParam:
         self.item_dnn_units = 128
         self.dropout = 0.2
         self.hidden_units = 256
-        self.num_blocks = 4
-        self.num_heads = 4
+        self.num_blocks = 8
+        self.num_heads = 8
         self.norm_first = True
     def read_feature_size(self, indexer_file):
         indexer = read_pickle(indexer_file)

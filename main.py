@@ -16,6 +16,7 @@ from torch.nn import functional as F
 from utils import seed_everything, seed_worker
 from loss import info_nce_loss,l2_reg_loss
 from mm_emb_loader import Memorymm81Embloader
+from torch.optim import SGD
 def build_dataloader(dataset, batch_size, num_workers, shuffle):
     return DataLoader(
         dataset, 
@@ -166,9 +167,12 @@ if __name__ == '__main__':
     optimizer = torch.optim.AdamW(model.parameters(), lr=const.lr, betas=(0.9, 0.99))
     scheduler = CosineLRScheduler(
                         optimizer, 
-                        t_initial=const.num_epochs * len(train_loader), 
+                        t_initial=const.num_epochs * len(train_loader) // 3.5,  
+                        cycle_mul=2,
                         warmup_t=const.warmup_t, 
-                        lr_min=1e-5, 
+                        lr_min=5e-5, 
+                        cycle_limit=2,
+                        cycle_decay=0.6,
                         warmup_lr_init=1e-5, 
                         t_in_epochs=False)
     
