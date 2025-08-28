@@ -189,9 +189,9 @@ class MyTestDataset(Dataset):
             token_type_list.append(token_type)
             feat_list.append(feat)
         
-        id_list = MyDataset.pad_seq(id_list, const.max_seq_len + 1, 0)
-        token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len + 1, 0)
-        feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len + 1, {})
+        id_list = MyDataset.pad_seq(id_list, const.max_seq_len, 0)
+        token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len, 0)
+        feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
         
         
         return torch.as_tensor(id_list).int(), \
