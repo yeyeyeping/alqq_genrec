@@ -104,13 +104,13 @@ def infer():
     top10_item_ids = []
     t = time.time()
     print(f"start to predict {len(dataloader) * dataloader.batch_size} user seqs")
-    for seq_id, token_type, feat_dict, user_id in dataloader:
+    for seq_id, token_type, feat_dict, user_id,time_matrix in dataloader:
         feat_dict = emb_loader.add_mm_emb(seq_id, feat_dict, token_type == 1)
         
-        seq_id,token_type,feat_dict = seq_id.to(const.device), token_type.to(const.device), to_device(feat_dict)
+        seq_id,token_type,feat_dict,time_matrix = seq_id.to(const.device), token_type.to(const.device), to_device(feat_dict),time_matrix.to(const.device)
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
             
-            next_token_emb = model(seq_id, token_type, feat_dict)
+            next_token_emb = model(seq_id, token_type, feat_dict, time_matrix)
             next_token_emb = F.normalize(next_token_emb[:,-1,:], dim=-1)
             sim = next_token_emb @ item_features_tensor.T
         _, indices = torch.topk(sim, k = 10)

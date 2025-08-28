@@ -138,7 +138,12 @@ class BaselineModel(nn.Module):
             # nn.Dropout(const.model_param.dropout),
         )
         
-        self.pos_embedding = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
+        self.pos_embedding_K = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
+        self.pos_embedding_V = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
+        
+        self.tm_embedding_K = nn.Embedding(const.time_span + 1, const.model_param.hidden_units, padding_idx=0)
+        self.tm_embedding_V = nn.Embedding(const.time_span + 1, const.model_param.hidden_units, padding_idx=0)
+        
         self.emb_dropout = nn.Dropout(const.model_param.dropout)
         self.casual_attention_layers = AttentionDecoder(const.model_param.num_blocks, 
                                                         const.model_param.hidden_units,
@@ -146,14 +151,20 @@ class BaselineModel(nn.Module):
                                                         const.model_param.dropout,
                                                         const.model_param.norm_first)
             
-    def add_pos_embedding(self, seqs_id, emb, ):
+    def add_pos_embedding(self, seqs_id, emb, time_matrix):
         emb *= const.model_param.hidden_units ** 0.5
         valid_mask = (seqs_id != 0).long()
+        
         poss = torch.cumsum(valid_mask, dim=1)
         poss = poss * valid_mask
-        emb += self.pos_embedding(poss)
-        emb = self.emb_dropout(emb)
-        return emb
+        
+        abs_pos_K = self.emb_dropout(self.pos_embedding_K(poss))
+        abs_pos_V =self.emb_dropout( self.pos_embedding_V(poss))
+        
+        time_matrix_K = self.emb_dropout(self.tm_embedding_K(time_matrix))
+        time_matrix_V = self.emb_dropout(self.tm_embedding_V(time_matrix))
+        
+        return emb,abs_pos_K,  abs_pos_V,time_matrix_K,time_matrix_V
     
         
     def forward_item(self, seq_id, feature_dict, token_type=None):
@@ -169,18 +180,34 @@ class BaselineModel(nn.Module):
         user_feat = self.user_tower(seq_id, token_type == 2, feature_dict)
         all_feat = user_feat + item_feat
         return self.merge_dnn(all_feat)
-    
-        
-    def forward(self, seqs_id, token_type, feat_dict):
+            
+    def forward(self, seqs_id, token_type, feat_dict, time_matrix):
         emb = self.forward_all_feat(seqs_id, token_type, feat_dict)
-        feat = self.add_pos_embedding(seqs_id, emb)
+        emb *= const.model_param.hidden_units ** 0.5
+        emb = F.dropout(emb, p=const.model_param.dropout)
+        
+        positions = np.tile(np.array(range(seqs_id.shape[1])), [seqs_id.shape[0], 1])
+        positions = torch.LongTensor(positions).to(const.device)
+        
+        abs_pos_K = self.emb_dropout(self.pos_embedding_K(positions))
+        abs_pos_V =self.emb_dropout( self.pos_embedding_V(positions))
+        
+        time_matrix_K = self.emb_dropout(self.tm_embedding_K(time_matrix))
+        time_matrix_V = self.emb_dropout(self.tm_embedding_V(time_matrix))
+        
+        timeline_mask = seqs_id == 0
+        emb *= ~timeline_mask.unsqueeze(-1) 
         
         maxlen = seqs_id.shape[1]
         
         ones_matrix = torch.ones((maxlen, maxlen), dtype=torch.bool, device=token_type.device)
-        attention_mask_tril = torch.tril(ones_matrix)
-        attention_mask_pad = (token_type != 0)
-        attention_mask = attention_mask_tril.unsqueeze(0) & attention_mask_pad.unsqueeze(1)
-        
-        log_feats = self.casual_attention_layers(feat, attention_mask)
+        attention_mask = ~torch.tril(ones_matrix)
+
+        log_feats = self.casual_attention_layers(emb, 
+                                                 attention_mask,
+                                                 seqs_id == 0,
+                                                 time_matrix_K,
+                                                 time_matrix_V,
+                                                 abs_pos_K,
+                                                 abs_pos_V)
         return log_feats

@@ -1,3 +1,5 @@
+import torch.nn.functional as F
+import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
 from utils import read_pickle
@@ -5,6 +7,7 @@ import json
 import const
 from collections import defaultdict
 import torch
+MIN_TS = 1724928000
 # from torch.utils.data._utils.collate import default_collate
 # import numpy as np
 # from sampler import BaseSampler
@@ -43,6 +46,13 @@ class MyDataset(Dataset):
             seq = [default_value] * (max_len - len(seq)) + seq 
         return seq
     
+    def norm_ts(self, ts: torch.Tensor) -> torch.Tensor:
+        diffs = torch.diff(ts)
+        pos_diffs = diffs[diffs > 0]
+        time_scale = pos_diffs.min() if pos_diffs.numel() > 0 else ts.new_tensor(1.0)
+        norm = torch.round((ts - ts.min() - MIN_TS) / time_scale).to(torch.long) + 1
+        return norm
+        
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
         ext_user_seq = self.format_user_seq(user_seq)
@@ -50,13 +60,24 @@ class MyDataset(Dataset):
         token_type_list = []
         action_type_list = []
         feat_list = []
-        
-        for i, feat, token_type, action_type, _ in ext_user_seq:
+        ts_list = []
+        for i, feat, token_type, action_type, ts in ext_user_seq:
             id_list.append(i)
             token_type_list.append(token_type)
             action_type_list.append(action_type if action_type is not None else 0)
             feat_list.append(feat)
+            ts_list.append(ts)
         
+        ts_arr = self.norm_ts(torch.as_tensor(ts_list))[:-1]  # 训练时丢掉最后一个
+        
+        time_matrix = torch.clamp(torch.abs(ts_arr[None] - ts_arr[:, None]), 0, const.time_span)
+
+        L = time_matrix.shape[0]
+        pad_len = const.max_seq_len - L
+        padded_time_matrix = F.pad(time_matrix, (pad_len, 0, pad_len, 0))  # (left, right, top, bottom)
+
+        padded_time_matrix = padded_time_matrix.to(torch.long)
+
         id_list = MyDataset.pad_seq(id_list, const.max_seq_len + 1, 0)
         token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len + 1, 0)
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len + 1, 0)
@@ -66,7 +87,8 @@ class MyDataset(Dataset):
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \
                 torch.as_tensor(action_type_list).int(), \
-                    MyDataset.collect_features(feat_list)
+                    MyDataset.collect_features(feat_list), \
+                        padded_time_matrix
         
     @classmethod
     def fill_feature(cls, feat):
@@ -152,7 +174,7 @@ class MyTestDataset(Dataset):
         ext_user_sequence = []
         user_id = None
         for record_tuple in user_sequence:
-            u, i, user_feat, item_feat, _, _ = record_tuple
+            u, i, user_feat, item_feat, _, ts = record_tuple
             if u and user_id is None:
                 if type(u) == str:  # 如果是字符串，说明是user_id
                     user_id = u
@@ -164,7 +186,7 @@ class MyTestDataset(Dataset):
                     u = 0
                 if user_feat:
                     user_feat = self._process_cold_start_feat(user_feat)
-                ext_user_sequence.insert(0, (u, user_feat, 2))
+                ext_user_sequence.insert(0, (u, user_feat, 2, ts))
 
             if i and item_feat:
                 # 序列对于训练时没见过的item，不会直接赋0，而是保留creative_id，creative_id远大于训练时的itemnum
@@ -172,9 +194,16 @@ class MyTestDataset(Dataset):
                     i = 0
                 if item_feat:
                     item_feat = self._process_cold_start_feat(item_feat)
-                ext_user_sequence.append((i, item_feat, 1))
+                ext_user_sequence.append((i, item_feat, 1, ts))
             
         return ext_user_sequence, user_id
+    
+    def norm_ts(self, ts: torch.Tensor) -> torch.Tensor:
+        diffs = torch.diff(ts)
+        pos_diffs = diffs[diffs > 0]
+        time_scale = pos_diffs.min() if pos_diffs.numel() > 0 else ts.new_tensor(1.0)
+        norm = torch.round((ts - ts.min() - MIN_TS) / time_scale).to(torch.long) + 1
+        return norm
     
     def __getitem__(self, uid):
         user_sequence = self._load_user_data(uid)
@@ -183,21 +212,32 @@ class MyTestDataset(Dataset):
         id_list = []
         token_type_list = []
         feat_list = []
-        
-        for i, feat, token_type in ext_user_sequence:
+        ts_list = []
+        for i, feat, token_type, ts in ext_user_sequence:
             id_list.append(i)
             token_type_list.append(token_type)
             feat_list.append(feat)
+            ts_list.append(ts)
         
-        id_list = MyDataset.pad_seq(id_list, const.max_seq_len + 1, 0)
-        token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len + 1, 0)
-        feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len + 1, {})
+        ts_arr = self.norm_ts(torch.as_tensor(ts_list))
+        time_matrix = torch.clamp(torch.abs(ts_arr[None] - ts_arr[:, None]), 0, const.time_span)
+        
+        L = time_matrix.shape[0]
+        pad_len = const.max_seq_len - L
+        padded_time_matrix = F.pad(time_matrix, (pad_len, 0, pad_len, 0))  # (left, right, top, bottom)
+
+        padded_time_matrix = padded_time_matrix.to(torch.long)
+        
+        
+        id_list = MyDataset.pad_seq(id_list, const.max_seq_len, 0)
+        token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len, 0)
+        feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
         
         
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \
                     MyDataset.collect_features(feat_list),\
-                    user_id
+                    user_id,padded_time_matrix
 
 
 if __name__ == "__main__":

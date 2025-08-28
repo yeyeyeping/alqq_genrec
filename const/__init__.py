@@ -13,6 +13,7 @@ if data_path is None:
         raise ValueError("Test data path is not set, please set the EVAL_DATA_PATH environment variable")
     
 # 数据相关
+time_span = 256
 mm_emb_dim = {
     "81": 32,
     "82": 1024,

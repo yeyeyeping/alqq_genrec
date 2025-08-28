@@ -41,7 +41,10 @@ def apply_model_init(model:BaselineModel):
     for k in model.item_tower.sparse_emb:
         model.item_tower.sparse_emb[k].weight.data[0, :] = 0
     
-    model.pos_embedding.weight.data[0, :] = 0
+    model.pos_embedding_K.weight.data[0, :] = 0
+    model.pos_embedding_V.weight.data[0, :] = 0
+    model.tm_embedding_K.weight.data[0, :] = 0
+    model.tm_embedding_V.weight.data[0, :] = 0
 
 
 def to_device(batch):
@@ -66,27 +69,25 @@ def make_input_and_label(seq_id, token_type, action_type, feat):
 
 def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     
-    seq_id, token_type, action_type, feat = batch
+    seq_id, token_type, action_type, feat, time_matrix = batch
     feat = emb_loader.add_mm_emb(seq_id, feat, token_type == 1)
 
     # 负样本采样
     neg_id, neg_feat = next(loader)
     neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
-    seq_id, token_type, action_type, feat = \
+    seq_id, token_type, action_type, feat, time_matrix = \
                 seq_id.to(const.device,non_blocking=True), \
                 token_type.to(const.device,non_blocking=True), \
                 action_type.to(const.device,non_blocking=True), \
-                to_device(feat)
+                to_device(feat), \
+                time_matrix.to(const.device,non_blocking=True)
         
     neg_id, neg_feat = neg_id.to(const.device, non_blocking=True), to_device(neg_feat)
     
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
         input_ids, input_token_type, input_action_type, input_feat, next_ids, next_token_type, next_action_type, next_feat \
                     = make_input_and_label(seq_id, token_type, action_type, feat)
-        
-        
-        next_token_emb = model(input_ids, input_token_type, input_feat)
-        
+        next_token_emb = model(input_ids, input_token_type, input_feat, time_matrix)
         neg_emb = model.forward_item(neg_id, neg_feat)
         pos_emb = model.forward_item(next_ids, next_feat, next_token_type)
         
