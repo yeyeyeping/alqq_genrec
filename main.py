@@ -167,12 +167,9 @@ if __name__ == '__main__':
     optimizer = torch.optim.AdamW(model.parameters(), lr=const.lr, betas=(0.9, 0.99))
     scheduler = CosineLRScheduler(
                         optimizer, 
-                        t_initial=const.num_epochs * len(train_loader) // 3.5,  
-                        cycle_mul=2,
+                        t_initial=const.num_epochs * len(train_loader) - 4000,  
                         warmup_t=const.warmup_t, 
                         lr_min=5e-5, 
-                        cycle_limit=2,
-                        cycle_decay=0.6,
                         warmup_lr_init=1e-5, 
                         t_in_epochs=False)
     
@@ -228,7 +225,7 @@ if __name__ == '__main__':
             writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
             writer.add_scalar('train/grad_norm', grad_norm, global_step)
             global_step += 1
-        save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"global_step{global_step}.training_loss={loss:.4f}")
+        save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"epoch={epoch}_global_step={global_step}.training_loss={loss:.4f}")
         save_dir.mkdir(parents=True, exist_ok=True)
         
         torch.save(model.state_dict(), save_dir / "model.pt")
@@ -274,5 +271,6 @@ if __name__ == '__main__':
         
         gc.collect()
     print("Done")
+    print(const.__dict__)
     writer.close()
     log_file.close()
