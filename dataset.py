@@ -159,6 +159,20 @@ class MyTestDataset(Dataset):
         line = self.seq_file_fp.readline()
         data = json.loads(line)
         return data
+    def norm_ts(self, ts: torch.Tensor) -> torch.Tensor:
+        ts = ts.long()
+        diffs = torch.diff(ts).abs()
+        pos_diffs = diffs[diffs > 0]
+        time_scale = pos_diffs.min() if pos_diffs.numel() > 0 else ts.new_tensor(1.0)
+        norm = torch.round((ts - ts.min()) / time_scale).to(torch.long) + 1
+        return norm
+    
+    def fill_ts(self, ts_arr, feat_list):
+        
+        for ts,feat in zip(ts_arr, feat_list):
+            feat['201'] = ts
+        
+        return feat_list
     @classmethod
     def _process_cold_start_feat(cls, feat):
         """
@@ -180,7 +194,7 @@ class MyTestDataset(Dataset):
         ext_user_sequence = []
         user_id = None
         for record_tuple in user_sequence:
-            u, i, user_feat, item_feat, _, _ = record_tuple
+            u, i, user_feat, item_feat, _, ts = record_tuple
             if u and user_id is None:
                 if type(u) == str:  # 如果是字符串，说明是user_id
                     user_id = u
@@ -192,7 +206,7 @@ class MyTestDataset(Dataset):
                     u = 0
                 if user_feat:
                     user_feat = self._process_cold_start_feat(user_feat)
-                ext_user_sequence.insert(0, (u, user_feat, 2))
+                ext_user_sequence.insert(0, (u, user_feat, 2, ts))
 
             if i and item_feat:
                 # 序列对于训练时没见过的item，不会直接赋0，而是保留creative_id，creative_id远大于训练时的itemnum
@@ -200,7 +214,7 @@ class MyTestDataset(Dataset):
                     i = 0
                 if item_feat:
                     item_feat = self._process_cold_start_feat(item_feat)
-                ext_user_sequence.append((i, item_feat, 1))
+                ext_user_sequence.append((i, item_feat, 1, ts))
             
         return ext_user_sequence, user_id
     
@@ -211,12 +225,18 @@ class MyTestDataset(Dataset):
         id_list = []
         token_type_list = []
         feat_list = []
-        
-        for i, feat, token_type in ext_user_sequence:
+        ts_list = []
+        for i, feat, token_type,ts in ext_user_sequence:
             id_list.append(i)
             token_type_list.append(token_type)
             feat_list.append(feat)
+            ts_list.append(ts)
+        ts_arr = self.norm_ts(torch.as_tensor(ts_list[1:]) / 60 / 60)
+        ts_arr = torch.diff(ts_arr) + 1
         
+        ts_arr = torch.clamp(ts_arr, max=const.model_param.time_span)
+        ts_arr = torch.cat([torch.tensor([0, 0]), ts_arr]).long()
+        feat_list = self.fill_ts(ts_arr, feat_list)
         id_list = MyDataset.pad_seq(id_list, const.max_seq_len, 0)
         token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len, 0)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
