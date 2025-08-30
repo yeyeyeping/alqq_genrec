@@ -2,6 +2,7 @@ from utils import read_pickle
 class ModelParam:
     def __init__(self,indexer_file):
         self.embedding_table_size = self.read_feature_size(indexer_file)
+        self.embedding_table_size["201"] = 1024
         self.embedding_dim = {
             "user_id":64,
             "item_id":96,
@@ -20,6 +21,7 @@ class ModelParam:
             "120": 24,     # 3392
             # "121": 64,    # 2135891
             "122": 32,     # 90919
+
             # 多模态特征
             "81": 64,
             "82": 128,
@@ -35,7 +37,9 @@ class ModelParam:
             "107": 16,     # 19
             "108": 16,      # 4
             "109": 16,      # 3
-            "110": 16       # 2
+            "110": 16,       # 2
+            
+            "201": 16,#时间特征
         }
         self.user_dnn_units = 128
         self.item_dnn_units = 128

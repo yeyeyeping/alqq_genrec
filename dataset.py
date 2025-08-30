@@ -8,6 +8,7 @@ import torch
 # from torch.utils.data._utils.collate import default_collate
 # import numpy as np
 # from sampler import BaseSampler
+MIN_TS = 1728921670
 class MyDataset(Dataset):
     def __init__(self, data_path): 
         super().__init__()
@@ -27,14 +28,23 @@ class MyDataset(Dataset):
         return data
 
     def format_user_seq(self, user_sequence):
-        # user_sequence = sorted(user_sequence, key=lambda x: x[-1])
+        user_sequence = sorted(user_sequence, key=lambda x: x[-1])
         ext_user_sequence = []
+        front_ts = user_sequence[0][-1]
+        
         for record_tuple in user_sequence:
             u, i, user_feat, item_feat, action_type, ts = record_tuple
+            
+            if not isinstance(ts, int):
+                ts = front_ts
+            
+                
             if u and user_feat:
-                ext_user_sequence.insert(0, (u, user_feat, 2, action_type, ts))
+                ext_user_sequence.insert(0, (u, user_feat, 2, action_type, 1))
             if i and item_feat:
                 ext_user_sequence.append((i, item_feat, 1, action_type, ts))
+            
+            front_ts = ts
         return ext_user_sequence
     
     @classmethod
@@ -43,6 +53,20 @@ class MyDataset(Dataset):
             seq = [default_value] * (max_len - len(seq)) + seq 
         return seq
     
+    def norm_ts(self, ts: torch.Tensor) -> torch.Tensor:
+        diffs = torch.diff(ts).abs()
+        pos_diffs = diffs[diffs > 0]
+        time_scale = pos_diffs.min() if pos_diffs.numel() > 0 else ts.new_tensor(1.0)
+        norm = torch.round((ts - ts.min()) / time_scale).to(torch.long) + 1
+        return norm
+    
+    def fill_ts(self, ts_arr, feat_list):
+        
+        for ts,feat in zip(ts_arr, feat_list):
+            feat['201'] = ts
+        
+        return feat_list
+            
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
         ext_user_seq = self.format_user_seq(user_seq)
@@ -50,24 +74,34 @@ class MyDataset(Dataset):
         token_type_list = []
         action_type_list = []
         feat_list = []
-        
-        for i, feat, token_type, action_type, _ in ext_user_seq:
+        ts_list = []
+        for i, feat, token_type, action_type, ts in ext_user_seq:
             id_list.append(i)
             token_type_list.append(token_type)
             action_type_list.append(action_type if action_type is not None else 0)
             feat_list.append(feat)
+            ts_list.append(ts)
+
+        ts_arr = self.norm_ts(torch.as_tensor(ts_list)/60/60)
+        breakpoint()
+        ts_arr = torch.diff(ts_arr, prepend=ts_arr[0][None])
+        feat_list = self.fill_ts(ts_arr, feat_list)
         
         id_list = MyDataset.pad_seq(id_list, const.max_seq_len + 1, 0)
         token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len + 1, 0)
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len + 1, 0)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len + 1, {})
         
+
+        
         
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \
                 torch.as_tensor(action_type_list).int(), \
-                    MyDataset.collect_features(feat_list)
-        
+                    MyDataset.collect_features(feat_list), \
+                    ts_arr
+                
+
     @classmethod
     def fill_feature(cls, feat):
         filled_feat = {}
@@ -201,7 +235,7 @@ class MyTestDataset(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = MyTestDataset(data_path='/home/yeep/project/alqq_generc/data/test_data')
+    dataset = MyDataset(data_path='/home/yeep/project/alqq_generc/data/TencentGR_1k')
     dataloader = DataLoader(dataset, batch_size=10, shuffle=False)
     for d in dataloader:
         print(d)
