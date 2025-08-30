@@ -167,7 +167,7 @@ if __name__ == '__main__':
     optimizer = torch.optim.AdamW(model.parameters(), lr=const.lr, betas=(0.9, 0.99))
     scheduler = CosineLRScheduler(
                         optimizer, 
-                        t_initial=const.num_epochs * len(train_loader),  
+                        t_initial=const.num_epochs * len(train_loader) - 4000,  
                         warmup_t=const.warmup_t, 
                         lr_min=5e-5, 
                         warmup_lr_init=1e-5, 
