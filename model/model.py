@@ -112,7 +112,15 @@ class ItemTower(nn.Module):
         
     def forward(self, seq_id, item_mask, feature_dict):
         id_embedding = self.sparse_emb['item_id'](seq_id * item_mask)
-        user_seq_emb = self.sparse_emb['item_id'](feature_dict['210']).mean(-2)
+        # 用户点击过的item的平均向量, b x seq_len x max_seq_len
+        mask = (feature_dict['210'] != 0).long()
+        breakpoint()
+        user_seq_emb = torch.sum(self.sparse_emb['item_id'](feature_dict['210']), dim=-2)
+        valid_mask = (mask.sum(-1) != 0)
+        # 计算平均，对于没有行为序列的用户保持为0向量
+        user_seq_emb = torch.where(valid_mask.unsqueeze(-1), 
+                                   user_seq_emb / mask.sum(-1).unsqueeze(-1).clamp(min=1), 
+                                   torch.zeros_like(user_seq_emb))
         
         feat_emb_list = [id_embedding, user_seq_emb]
         for feat_id in const.item_feature.sparse_feature_ids:
