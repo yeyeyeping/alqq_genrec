@@ -190,7 +190,7 @@ class MyTestDataset(Dataset):
         return processed_feat
     
     def format_user_seq(self, user_sequence):
-        # user_sequence = sorted(user_sequence, key=lambda x: x[-1])
+        user_sequence = sorted(user_sequence, key=lambda x: x[-1])
         ext_user_sequence = []
         user_id = None
         for record_tuple in user_sequence:
