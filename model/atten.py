@@ -1,7 +1,42 @@
 from torch import nn
 import torch.nn.functional as F
 import torch
+from typing import Tuple
+import const
+# 生成旋转矩阵
+def precompute_freqs_cis(dim: int, seq_len: int, theta: float = 10000.0):
+    # 计算词向量元素两两分组之后，每组元素对应的旋转角度\theta_i
+    freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
+    # 生成 token 序列索引 t = [0, 1,..., seq_len-1]
+    t = torch.arange(seq_len, device=freqs.device)
+    # freqs.shape = [seq_len, dim // 2] 
+    freqs = torch.outer(t, freqs).float()  # 计算m * \theta
 
+    # 计算结果是个复数向量
+    # 假设 freqs = [x, y]
+    # 则 freqs_cis = [cos(x) + sin(x)i, cos(y) + sin(y)i]
+    freqs_cis = torch.polar(torch.ones_like(freqs), freqs) 
+    return freqs_cis
+
+# 旋转位置编码计算
+def apply_rotary_emb(
+    xq: torch.Tensor,
+    xk: torch.Tensor,
+    freqs_cis: torch.Tensor,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    # xq.shape = [batch_size, seq_len, dim]
+    # xq_.shape = [batch_size, seq_len, dim // 2, 2]
+    xq_ = xq.float().reshape(*xq.shape[:-1], -1, 2)
+    xk_ = xk.float().reshape(*xk.shape[:-1], -1, 2)
+    
+    # 转为复数域
+    xq_ = torch.view_as_complex(xq_)
+    xk_ = torch.view_as_complex(xk_)
+    
+    # 应用旋转操作，然后将结果转回实数域，保持原始形状
+    xq_out = torch.view_as_real(xq_ * freqs_cis).reshape(*xq.shape)
+    xk_out = torch.view_as_real(xk_ * freqs_cis).reshape(*xk.shape)
+    return xq_out.type_as(xq), xk_out.type_as(xk)
 class PointWiseFeedForward(nn.Module):
     def __init__(self, hidden_units, dropout_rate):
         super(PointWiseFeedForward, self).__init__()
@@ -33,6 +68,8 @@ class FlashMultiHeadAttention(nn.Module):
         self.v_linear = nn.Linear(hidden_units, hidden_units)
         self.out_linear = nn.Linear(hidden_units, hidden_units)
 
+        freqs = precompute_freqs_cis(self.head_dim, const.max_seq_len)
+        self.register_buffer("freqs_cis", freqs)
     def forward(self, query, key, value, attn_mask=None):
         batch_size, seq_len, _ = query.size()
 
@@ -41,10 +78,15 @@ class FlashMultiHeadAttention(nn.Module):
         K = self.k_linear(key)
         V = self.v_linear(value)
 
-        # reshape为multi-head格式
+        # reshape为multi-head格式 [B, H, S, D]
         Q = Q.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
         K = K.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
         V = V.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+
+
+        # 应用 RoPE（广播到 [B, H, S, D/2]）
+        Q, K = apply_rotary_emb(Q, K, self.freqs_cis)
+
 
         if hasattr(F, 'scaled_dot_product_attention'):
             # PyTorch 2.0+ 使用内置的Flash Attention
