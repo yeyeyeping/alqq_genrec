@@ -232,7 +232,15 @@ class MyTestDataset(Dataset):
                 ext_user_sequence.append((i, item_feat, 1, ts))
             
         return ext_user_sequence, user_id
-    
+    def add_time_feat(self, feat,ts):
+        dt = datetime.fromtimestamp(ts)
+        # 0 for padding
+        feat['202'] = dt.weekday() + 1
+        feat['203'] = dt.hour + 1
+        feat['204'] = dt.month + 1
+        feat['205'] = dt.day + 1
+        
+        return feat
     def __getitem__(self, uid):
         user_sequence = self._load_user_data(uid)
         ext_user_sequence, user_id = self.format_user_seq(user_sequence)
@@ -244,6 +252,8 @@ class MyTestDataset(Dataset):
         for i, feat, token_type,ts in ext_user_sequence:
             id_list.append(i)
             token_type_list.append(token_type)
+            if token_type == 1:
+                feat = self.add_time_feat(feat, ts)
             feat_list.append(feat)
             ts_list.append(ts)
         ts_arr = self.norm_ts(torch.as_tensor(ts_list[1:]) / 60 / 60)
