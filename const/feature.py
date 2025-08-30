@@ -50,7 +50,11 @@ class  ItemFeature:
             '120',
             # '121',
             '122',
-            "201"
+            "201",
+            "202",
+            "203",
+            "204",
+            "205",
         )
         self.dense_feature_ids = ()
         self.mm_emb_feature_ids = ("81", )

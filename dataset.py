@@ -5,6 +5,7 @@ import json
 import const
 from collections import defaultdict
 import torch
+from datetime import datetime
 # from torch.utils.data._utils.collate import default_collate
 # import numpy as np
 # from sampler import BaseSampler
@@ -58,7 +59,18 @@ class MyDataset(Dataset):
             feat['201'] = ts
         
         return feat_list
-            
+    
+    
+    def add_time_feat(self, feat,ts):
+        dt = datetime.fromtimestamp(ts)
+        # 0 for padding
+        feat['202'] = dt.weekday() + 1
+        feat['203'] = dt.hour + 1
+        feat['204'] = dt.month + 1
+        feat['205'] = dt.day + 1
+        
+        return feat
+    
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
         ext_user_seq = self.format_user_seq(user_seq)
@@ -71,8 +83,11 @@ class MyDataset(Dataset):
             id_list.append(i)
             token_type_list.append(token_type)
             action_type_list.append(action_type if action_type is not None else 0)
+            if action_type == 1:
+                feat = self.add_time_feat(feat, ts)
             feat_list.append(feat)
             ts_list.append(ts)
+            
             
         
         ts_arr = self.norm_ts(torch.as_tensor(ts_list[1:]) / 60 / 60)

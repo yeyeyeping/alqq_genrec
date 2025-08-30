@@ -63,6 +63,10 @@ def make_input_and_label(seq_id, token_type, action_type, feat):
     label_feat = {k:v[:,1:].clone() for k,v in feat.items()}
     # 忽略正样本中的时间特征
     label_feat['201'] = torch.zeros_like(label_feat['201'])
+    label_feat['202'] = torch.zeros_like(label_feat['202'])
+    label_feat['203'] = torch.zeros_like(label_feat['203'])
+    label_feat['204'] = torch.zeros_like(label_feat['204'])
+    label_feat['205'] = torch.zeros_like(label_feat['205'])
     return input_ids, input_token_type, input_action_type, input_feat, label_ids, label_token_type, label_action_type, label_feat
 
 def train_one_step(batch, emb_loader, loader, model:BaselineModel):
@@ -84,8 +88,6 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
         input_ids, input_token_type, input_action_type, input_feat, next_ids, next_token_type, next_action_type, next_feat \
                     = make_input_and_label(seq_id, token_type, action_type, feat)
-        
-        
         next_token_emb = model(input_ids, input_token_type, input_feat)
         
         neg_emb = model.forward_item(neg_id, neg_feat)

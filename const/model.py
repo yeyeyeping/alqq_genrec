@@ -4,6 +4,11 @@ class ModelParam:
         self.embedding_table_size = self.read_feature_size(indexer_file)
         self.time_span = 4096
         self.embedding_table_size["201"] = self.time_span
+        self.embedding_table_size["202"] = 8
+        self.embedding_table_size["203"] = 25
+        self.embedding_table_size["204"] = 13
+        self.embedding_table_size["205"] = 32
+        
         self.embedding_dim = {
             "user_id":64,
             "item_id":96,
@@ -41,6 +46,10 @@ class ModelParam:
             "110": 16,       # 2
             
             "201": 32,#时间特征
+            "202": 16,#weekday
+            "203": 16, #hour
+            "204": 16, #month
+            "205": 16, #day   
         }
         self.user_dnn_units = 128
         self.item_dnn_units = 128
