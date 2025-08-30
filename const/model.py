@@ -50,6 +50,7 @@ class ModelParam:
             "203": 16, #hour
             "204": 16, #month
             "205": 16, #day   
+            "210":96
         }
         self.user_dnn_units = 128
         self.item_dnn_units = 128

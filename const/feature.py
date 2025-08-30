@@ -2,7 +2,7 @@
 class UserFeature:
     def __init__(self):
         self.sparse_feature_ids = ('103', '104', '105', '109')
-        self.dense_feature_ids = []
+        self.dense_feature_ids = ()
         self.array_feature_ids = ('106', '107', '108', '110')
         self.all_feature_ids = sorted(list(self.sparse_feature_ids) + list(self.dense_feature_ids) + list(self.array_feature_ids))
 
@@ -56,6 +56,7 @@ class  ItemFeature:
             "204",
             "205",
         )
+        self.handcraft_feature = ("210",)
         self.dense_feature_ids = ()
         self.mm_emb_feature_ids = ("81", )
         self.all_feature_ids = sorted(list(self.sparse_feature_ids) + list(self.dense_feature_ids))
@@ -65,6 +66,8 @@ class  ItemFeature:
             return 0
         elif feat_id in self.dense_feature_ids:
             return 0.0
+        elif feat_id == "210":
+            return [0] * 10
         else:
             raise ValueError(f"Invalid feature id: {feat_id}")
         
@@ -76,3 +79,4 @@ print(f"total user feature: {len(user_feature.all_feature_ids)}, ids: {user_feat
 print(f"total item feature: {len(item_feature.all_feature_ids)}, ids: {item_feature.all_feature_ids}")
 
 print(f"total feature: {len(user_feature.all_feature_ids) + len(item_feature.all_feature_ids)}, ids: {user_feature.all_feature_ids + item_feature.all_feature_ids}")
+print(f"handcraft feature: {item_feature.handcraft_feature}")

@@ -92,6 +92,11 @@ class ItemTower(nn.Module):
         for feat_id in const.item_feature.mm_emb_feature_ids:
             num += const.model_param.embedding_dim[feat_id]
             print(f"{feat_id} : {num}",end=", ")
+        
+        for feat_id in const.item_feature.handcraft_feature:
+            num += const.model_param.embedding_dim[feat_id]
+            print(f"{feat_id} : {num}",end=", ")
+        
         print(f"dense : {num}")
         return num
     
@@ -107,9 +112,9 @@ class ItemTower(nn.Module):
         
     def forward(self, seq_id, item_mask, feature_dict):
         id_embedding = self.sparse_emb['item_id'](seq_id * item_mask)
+        user_seq_emb = self.sparse_emb['item_id'](feature_dict['210']).mean(-2)
         
-        feat_emb_list = [id_embedding, ]
-        
+        feat_emb_list = [id_embedding, user_seq_emb]
         for feat_id in const.item_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
         

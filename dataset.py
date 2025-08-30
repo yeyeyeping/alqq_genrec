@@ -79,12 +79,25 @@ class MyDataset(Dataset):
         action_type_list = []
         feat_list = []
         ts_list = []
+        
+        front_click_item = []
         for i, feat, token_type, action_type, ts in ext_user_seq:
             id_list.append(i)
             token_type_list.append(token_type)
             action_type_list.append(action_type if action_type is not None else 0)
+            
+            # 近10个用户序列
+            feat['210'] = front_click_item[:10].copy()
+            feat['210'] = torch.as_tensor(self.pad_seq(feat['210'], 10, 0)).int()
+            
+            #点击
             if action_type == 1:
+                front_click_item.append(i)
+            
+            # item位置
+            if token_type == 1:
                 feat = self.add_time_feat(feat, ts)
+            
             feat_list.append(feat)
             ts_list.append(ts)
             
@@ -101,9 +114,6 @@ class MyDataset(Dataset):
         token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len + 1, 0)
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len + 1, 0)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len + 1, {})
-        
-
-        
         
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \
@@ -132,6 +142,10 @@ class MyDataset(Dataset):
             else:
                 filled_feat[feat_id] = feat[feat_id]
         
+        #手工特征填充        
+        if "210" in const.item_feature.handcraft_feature:
+            filled_feat["210"] = feat.get("210", [0]*10)
+
         return filled_feat
     
     @classmethod
@@ -141,12 +155,16 @@ class MyDataset(Dataset):
         for feat in feat_list:
             for feat_id, feat_value in feat.items():
                 feature_name_value_list[feat_id].append(feat_value)
+        
         out_dict = {}
         for k, v in feature_name_value_list.items():
             if k in const.user_feature.array_feature_ids + const.user_feature.sparse_feature_ids  + const.item_feature.sparse_feature_ids:
                 out_dict[k] = torch.as_tensor(v, dtype=torch.int32)
+
             elif k in const.user_feature.dense_feature_ids + const.item_feature.dense_feature_ids:
                 out_dict[k] = torch.as_tensor(v, dtype=torch.float32)
+            elif k == "210":
+                out_dict[k] = torch.as_tensor(v, dtype=torch.int32)
             else:
                 print(f"Invalid feature id: {k}")
                         
@@ -255,7 +273,6 @@ class MyTestDataset(Dataset):
         id_list = MyDataset.pad_seq(id_list, const.max_seq_len, 0)
         token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len, 0)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
-        
         
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \

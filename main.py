@@ -67,6 +67,8 @@ def make_input_and_label(seq_id, token_type, action_type, feat):
     label_feat['203'] = torch.zeros_like(label_feat['203'])
     label_feat['204'] = torch.zeros_like(label_feat['204'])
     label_feat['205'] = torch.zeros_like(label_feat['205'])
+    label_feat['210'] = torch.zeros_like(label_feat['210'])
+    
     return input_ids, input_token_type, input_action_type, input_feat, label_ids, label_token_type, label_action_type, label_feat
 
 def train_one_step(batch, emb_loader, loader, model:BaselineModel):
@@ -170,7 +172,7 @@ if __name__ == '__main__':
     optimizer = torch.optim.AdamW(model.parameters(), lr=const.lr, betas=(0.9, 0.99))
     scheduler = CosineLRScheduler(
                         optimizer, 
-                        t_initial=const.num_epochs * len(train_loader) - 4000,  
+                        t_initial=const.num_epochs * len(train_loader),  
                         warmup_t=const.warmup_t, 
                         lr_min=5e-5, 
                         warmup_lr_init=1e-5, 
