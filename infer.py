@@ -85,7 +85,6 @@ def infer():
     print(f"start to obtain item features....")
     for item_id, feature, creative_id in next_batched_item(test_dataset.indexer['i'], const.infer_batch_size):
         feature = emb_loader.add_mm_emb(item_id, feature)
-        
         item_id = item_id.to(const.device)
         feature = to_device(feature)
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):

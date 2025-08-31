@@ -227,7 +227,7 @@ class MyTestDataset(Dataset):
         ext_user_sequence = []
         user_id = None
         for record_tuple in user_sequence:
-            u, i, user_feat, item_feat, _, ts = record_tuple
+            u, i, user_feat, item_feat, action_type, ts = record_tuple
             if u and user_id is None:
                 if type(u) == str:  # 如果是字符串，说明是user_id
                     user_id = u
@@ -239,7 +239,7 @@ class MyTestDataset(Dataset):
                     u = 0
                 if user_feat:
                     user_feat = self._process_cold_start_feat(user_feat)
-                ext_user_sequence.insert(0, (u, user_feat, 2, ts))
+                ext_user_sequence.insert(0, (u, user_feat, 2, action_type,ts))
 
             if i and item_feat:
                 # 序列对于训练时没见过的item，不会直接赋0，而是保留creative_id，creative_id远大于训练时的itemnum
@@ -247,10 +247,18 @@ class MyTestDataset(Dataset):
                     i = 0
                 if item_feat:
                     item_feat = self._process_cold_start_feat(item_feat)
-                ext_user_sequence.append((i, item_feat, 1, ts))
+                ext_user_sequence.append((i, item_feat, 1,action_type, ts))
             
         return ext_user_sequence, user_id
-    
+    def add_time_feat(self, feat,ts):
+        dt = datetime.fromtimestamp(ts)
+        # 0 for padding
+        feat['202'] = dt.weekday() + 1
+        feat['203'] = dt.hour + 1
+        feat['204'] = dt.month + 1
+        feat['205'] = dt.day + 1
+        
+        return feat
     def __getitem__(self, uid):
         user_sequence = self._load_user_data(uid)
         ext_user_sequence, user_id = self.format_user_seq(user_sequence)
@@ -259,11 +267,22 @@ class MyTestDataset(Dataset):
         token_type_list = []
         feat_list = []
         ts_list = []
-        for i, feat, token_type,ts in ext_user_sequence:
+        front_click_item = []
+        for i, feat, token_type,action_type, ts in ext_user_sequence:
             id_list.append(i)
             token_type_list.append(token_type)
             feat_list.append(feat)
             ts_list.append(ts)
+            
+            feat['210'] = front_click_item[:10].copy()
+            feat['210'] = MyDataset.pad_seq(feat['210'], 10, 0)
+            
+            if action_type == 1:
+                front_click_item.append(i)
+            
+            if token_type == 1:
+                feat = self.add_time_feat(feat, ts)
+                
         ts_arr = self.norm_ts(torch.as_tensor(ts_list[1:]) / 60 / 60)
         ts_arr = torch.diff(ts_arr) + 1
         
