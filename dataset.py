@@ -182,7 +182,7 @@ class MyDataset(Dataset):
                 print(f"Invalid feature id: {k}")
                         
         return out_dict
-    
+        
 class MyTestDataset(Dataset):
     def __init__(self, data_path):
         super().__init__()
@@ -240,7 +240,7 @@ class MyTestDataset(Dataset):
         ext_user_sequence = []
         user_id = None
         for record_tuple in user_sequence:
-            u, i, user_feat, item_feat, _, ts = record_tuple
+            u, i, user_feat, item_feat, action_type, ts = record_tuple
             if u and user_id is None:
                 if type(u) == str:  # 如果是字符串，说明是user_id
                     user_id = u
@@ -252,7 +252,7 @@ class MyTestDataset(Dataset):
                     u = 0
                 if user_feat:
                     user_feat = self._process_cold_start_feat(user_feat)
-                ext_user_sequence.insert(0, (u, user_feat, 2, ts))
+                ext_user_sequence.insert(0, (u, user_feat, 2, action_type,ts))
 
             if i and item_feat:
                 # 序列对于训练时没见过的item，不会直接赋0，而是保留creative_id，creative_id远大于训练时的itemnum
@@ -260,18 +260,37 @@ class MyTestDataset(Dataset):
                     i = 0
                 if item_feat:
                     item_feat = self._process_cold_start_feat(item_feat)
-                ext_user_sequence.append((i, item_feat, 1, ts))
+                ext_user_sequence.append((i, item_feat, 1,action_type, ts))
             
         return ext_user_sequence, user_id
-    def add_time_feat(self, feat,ts):
-        dt = datetime.fromtimestamp(ts)
-        # 0 for padding
-        feat['202'] = dt.weekday() + 1
-        feat['203'] = dt.hour + 1
-        feat['204'] = dt.month + 1
-        feat['205'] = dt.day + 1
+
+    def add_time_feat(self, ts_array):
+        ts_tensor = torch.as_tensor(ts_array)
+        time_gap = torch.diff(ts_tensor,prepend=ts_tensor[0][None])
+        log_gap = torch.log1p(time_gap).int() + 1
+        log_gap = torch.clamp(log_gap, max=const.model_param.max_diff)
         
-        return feat
+        ts_utc8 = ts_tensor + 8 * 3600
+        dt = pd.to_datetime(ts_utc8, unit='s')
+        hours = torch.as_tensor(dt.hour) + 1
+        weekdays = torch.as_tensor(dt.weekday) + 1
+        months = torch.as_tensor(dt.month) + 1
+        days = torch.as_tensor(dt.day) + 1
+
+        decay = (torch.as_tensor(MAX_TS) - ts_tensor) / 86400 
+        delta_scaled = torch.log1p(decay).int() + 1
+        
+        delta_scaled = torch.clamp(delta_scaled, max=const.model_param.max_decay)
+        out_time_feat = {
+            "201": MyDataset.pad_seq(log_gap, const.max_seq_len, 0),
+            "202": MyDataset.pad_seq(weekdays, const.max_seq_len , 0),
+            "203": MyDataset.pad_seq(hours, const.max_seq_len , 0),
+            "204": MyDataset.pad_seq(months, const.max_seq_len, 0),
+            "205": MyDataset.pad_seq(days, const.max_seq_len , 0),
+            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len, 0)
+            
+        }
+        return out_time_feat
     def __getitem__(self, uid):
         user_sequence = self._load_user_data(uid)
         ext_user_sequence, user_id = self.format_user_seq(user_sequence)
@@ -280,28 +299,34 @@ class MyTestDataset(Dataset):
         token_type_list = []
         feat_list = []
         ts_list = []
-        for i, feat, token_type,ts in ext_user_sequence:
+        
+        front_click_item = []
+        seq_list = []
+        for i, feat, token_type,action_type,ts in ext_user_sequence:
             id_list.append(i)
             token_type_list.append(token_type)
-            if token_type == 1:
-                feat = self.add_time_feat(feat, ts)
             feat_list.append(feat)
-            ts_list.append(ts)
-        ts_arr = self.norm_ts(torch.as_tensor(ts_list[1:]) / 60 / 60)
-        ts_arr = torch.diff(ts_arr) + 1
+            seq_list.append(MyDataset.pad_seq(front_click_item[-const.context_feature.seq_len:].copy(), const.context_feature.seq_len, 0))
+            if token_type == 1:
+                ts_list.append(ts)
+                
+            if action_type == 1:
+                front_click_item.append(i)
+            
+        time_feat = self.add_time_feat(ts_list)
         
-        ts_arr = torch.clamp(ts_arr, max=const.model_param.time_span)
-        ts_arr = torch.cat([torch.tensor([0, 0]), ts_arr]).long()
-        feat_list = self.fill_ts(ts_arr, feat_list)
         
         
         id_list = MyDataset.pad_seq(id_list, const.max_seq_len, 0)
         token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len, 0)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
-        
+        seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0] *const.context_feature.seq_len)
+                
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \
-                    MyDataset.collect_features(feat_list),\
+                    {**MyDataset.collect_features(feat_list, include_context=False), \
+                     **time_feat,
+                     "210": torch.as_tensor(seq_list, dtype=torch.int32)},\
                     user_id
 
 
