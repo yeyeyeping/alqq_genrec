@@ -43,7 +43,7 @@ def next_batched_item(indexer, batch_size=512):
             # Yield when we have accumulated batch_size items
             if len(item_id_list) == batch_size:
                 item_id_tensor = torch.as_tensor(item_id_list)
-                feature_tensor = MyDataset.collect_features(feature_list)
+                feature_tensor = MyDataset.collect_features(feature_list,include_user=False,include_context=False)
                 creative_id_tensor = torch.as_tensor(creative_id_list)
                 yield item_id_tensor, feature_tensor, creative_id_tensor
                 item_id_list.clear()
@@ -53,7 +53,7 @@ def next_batched_item(indexer, batch_size=512):
         # Yield any remaining items
         if item_id_list:
             item_id_tensor = torch.as_tensor(item_id_list)
-            feature_tensor = MyDataset.collect_features(feature_list)
+            feature_tensor = MyDataset.collect_features(feature_list,include_user=False,include_context=False)
             creative_id_tensor = torch.as_tensor(creative_id_list)
             yield item_id_tensor, feature_tensor, creative_id_tensor
             
@@ -85,7 +85,6 @@ def infer():
     print(f"start to obtain item features....")
     for item_id, feature, creative_id in next_batched_item(test_dataset.indexer['i'], const.infer_batch_size):
         feature = emb_loader.add_mm_emb(item_id, feature)
-        
         item_id = item_id.to(const.device)
         feature = to_device(feature)
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):

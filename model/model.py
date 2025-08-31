@@ -48,14 +48,17 @@ class UserTower(nn.Module):
         
         for feat_id in const.user_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
+            feature_dict.pop(feat_id)
         
         for feat_id in const.user_feature.array_feature_ids:
             emb = self.sparse_emb[feat_id](feature_dict[feat_id])
             # 对数组特征进行求和池化，注意不能除以mask.sum(-1, keepdim=True)，因为mask可能为0
             feat_emb_list.append(emb.sum(-2))
+            feature_dict.pop(feat_id)
         
         for feat_id in const.user_feature.dense_feature_ids:
             feat_emb_list.append(feature_dict[feat_id].unsqueeze(-1))
+            feature_dict.pop(feat_id)
         
         
         user_features = torch.cat(feat_emb_list, dim=-1)
@@ -98,11 +101,13 @@ class ItemTower(nn.Module):
     def setup_embedding_layer(self):
         emb_dict = nn.ModuleDict()
         emb_dict['item_id'] = nn.Embedding(const.model_param.embedding_table_size['item_id'] + 1, 
-                                                    const.model_param.embedding_dim['item_id'], padding_idx=0)
+                                                    const.model_param.embedding_dim['item_id'], 
+                                                    padding_idx=0)
         
         for feat_id in const.item_feature.sparse_feature_ids:
             emb_dict[feat_id] = nn.Embedding(const.model_param.embedding_table_size[feat_id] + 1, 
-                                                    const.model_param.embedding_dim[feat_id], padding_idx=0 )
+                                                    const.model_param.embedding_dim[feat_id], 
+                                                    padding_idx=0 )
         return emb_dict
         
     def forward(self, seq_id, item_mask, feature_dict):
@@ -112,26 +117,55 @@ class ItemTower(nn.Module):
         
         for feat_id in const.item_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
+            feature_dict.pop(feat_id)
         
         for feat_id in const.item_feature.dense_feature_ids:
             feat_emb_list.append(feature_dict[feat_id].unsqueeze(-1))
+            feature_dict.pop(feat_id)
             
         for feat_id in const.item_feature.mm_emb_feature_ids:
             feat_emb_list.append(F.dropout(self.mm_liner[feat_id](feature_dict[feat_id]), p=0.4))
+            feature_dict.pop(feat_id)
         
         item_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(item_features)
-        
 
+class ContextTower(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.sparse_emb = self.setup_embedding_layer()
+        self.dnn = nn.Sequential(
+            nn.Linear(self.get_context_feature_dim(), const.model_param.context_dnn_units),
+            nn.ReLU(),
+            nn.Linear(const.model_param.context_dnn_units, const.model_param.hidden_units),
+        )
 
+    def get_context_feature_dim(self):
+        return const.model_param.embedding_dim['item_id']
     
+
+    def setup_embedding_layer(self):
+        emb_dict = nn.ModuleDict()
+        for feat_id in const.context_feature.sparse_feature_ids:
+            emb_dict[feat_id] = nn.Embedding(const.model_param.embedding_table_size[feat_id] + 1, 
+                                                    const.model_param.embedding_dim[feat_id], 
+                                                    padding_idx=0 )
+        return emb_dict
+
+    def forward(self, feature_dict):
+        feat_emb_list = []
+        for feat_id in const.context_feature.sparse_feature_ids:
+            feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
+            feature_dict.pop(feat_id)
+        context_features = torch.cat(feat_emb_list, dim=-1)
+        return self.dnn(context_features)
 
 class BaselineModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.item_tower = ItemTower()
         self.user_tower = UserTower()
-        
+        self.context_tower = ContextTower()
         self.merge_dnn = nn.Sequential(
             nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units),
             # nn.LayerNorm(const.model_param.hidden_units),
@@ -165,9 +199,9 @@ class BaselineModel(nn.Module):
     
     def forward_all_feat(self, seq_id, token_type, feature_dict):
         item_feat = self.forward_item(seq_id, feature_dict, token_type)
-        
         user_feat = self.user_tower(seq_id, token_type == 2, feature_dict)
-        all_feat = user_feat + item_feat
+        context_feat = self.context_tower(feature_dict)
+        all_feat = user_feat + item_feat + context_feat
         return self.merge_dnn(all_feat)
     
         

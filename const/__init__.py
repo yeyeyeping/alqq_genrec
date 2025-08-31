@@ -1,4 +1,4 @@
-from .feature import user_feature, item_feature
+from .feature import user_feature, item_feature, context_feature
 import os
 from .model import ModelParam
 from pathlib import Path

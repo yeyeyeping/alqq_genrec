@@ -50,11 +50,6 @@ class  ItemFeature:
             '120',
             # '121',
             '122',
-            "201",
-            "202",
-            "203",
-            "204",
-            "205",
         )
         self.dense_feature_ids = ()
         self.mm_emb_feature_ids = ("81", )
@@ -68,10 +63,26 @@ class  ItemFeature:
         else:
             raise ValueError(f"Invalid feature id: {feat_id}")
         
-
+class ContextFeature:
+    def __init__(self):
+        self.sparse_feature_ids = (
+            "201",
+            "202",
+            "203",
+            "204",
+            "205",)
+        
+        self.all_feature_ids = sorted(list(self.sparse_feature_ids))
+        
+    def fill(self, feat_id):
+        if feat_id in self.sparse_feature_ids:
+            return 0
+        else:
+            raise ValueError(f"Invalid feature id: {feat_id}")
+        
 user_feature = UserFeature()
 item_feature = ItemFeature()
-    
+context_feature = ContextFeature()
 print(f"total user feature: {len(user_feature.all_feature_ids)}, ids: {user_feature.all_feature_ids}")
 print(f"total item feature: {len(item_feature.all_feature_ids)}, ids: {item_feature.all_feature_ids}")
 
