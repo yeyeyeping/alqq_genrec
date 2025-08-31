@@ -6,10 +6,13 @@ import const
 from collections import defaultdict
 import torch
 from datetime import datetime
+import pandas as pd
+
 # from torch.utils.data._utils.collate import default_collate
 # import numpy as np
 # from sampler import BaseSampler
 MIN_TS = 1728921670
+MAX_TS = 1748907455
 class MyDataset(Dataset):
     def __init__(self, data_path): 
         super().__init__()
@@ -42,7 +45,16 @@ class MyDataset(Dataset):
     @classmethod
     def pad_seq(cls, seq, max_len, default_value):
         if len(seq) < max_len:
-            seq = [default_value] * (max_len - len(seq)) + seq 
+            if isinstance(seq, list):
+                seq = [default_value,] * (max_len - len(seq)) + seq 
+            elif isinstance(seq, torch.Tensor):
+                default_value = torch.as_tensor(default_value)
+                seq = torch.cat([default_value.repeat(max_len - len(seq)), seq])
+            else:
+                raise ValueError(f"Invalid default value type: {type(seq)}")
+        else:
+            seq = seq[:max_len]
+            print(f"seq length is greater than max_len, seq length: {len(seq)}, max_len: {max_len}")
         return seq
     
     def norm_ts(self, ts: torch.Tensor) -> torch.Tensor:
@@ -53,23 +65,34 @@ class MyDataset(Dataset):
         norm = torch.round((ts - ts.min()) / time_scale).to(torch.long) + 1
         return norm
     
-    def fill_ts(self, ts_arr, feat_list):
+    def add_time_feat(self, ts_array):
+        ts_tensor = torch.as_tensor(ts_array)
+        time_gap = torch.diff(ts_tensor,prepend=ts_tensor[0][None])
+        log_gap = torch.log1p(time_gap).int() + 1
+        log_gap = torch.clamp(log_gap, max=const.model_param.max_diff)
         
-        for ts,feat in zip(ts_arr, feat_list):
-            feat['201'] = ts
+        ts_utc8 = ts_tensor + 8 * 3600
+        dt = pd.to_datetime(ts_utc8, unit='s')
+        hours = torch.as_tensor(dt.hour) + 1
+        weekdays = torch.as_tensor(dt.weekday) + 1
+        months = torch.as_tensor(dt.month) + 1
+        days = torch.as_tensor(dt.day) + 1
+
+        decay = (torch.as_tensor(MAX_TS) - ts_tensor) / 86400 
+        delta_scaled = torch.log1p(decay).int() + 1
         
-        return feat_list
-    
-    
-    def add_time_feat(self, feat,ts):
-        dt = datetime.fromtimestamp(ts)
-        # 0 for padding
-        feat['202'] = dt.weekday() + 1
-        feat['203'] = dt.hour + 1
-        feat['204'] = dt.month + 1
-        feat['205'] = dt.day + 1
+        delta_scaled = torch.clamp(delta_scaled, max=const.model_param.max_decay)
+        out_time_feat = {
+            "201": MyDataset.pad_seq(log_gap, const.max_seq_len + 1, 0),
+            "202": MyDataset.pad_seq(weekdays, const.max_seq_len + 1, 0),
+            "203": MyDataset.pad_seq(hours, const.max_seq_len + 1, 0),
+            "204": MyDataset.pad_seq(months, const.max_seq_len + 1, 0),
+            "205": MyDataset.pad_seq(days, const.max_seq_len + 1, 0),
+            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len + 1, 0)
+            
+        }
+        return out_time_feat
         
-        return feat
     
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
@@ -83,30 +106,23 @@ class MyDataset(Dataset):
             id_list.append(i)
             token_type_list.append(token_type)
             action_type_list.append(action_type if action_type is not None else 0)
-            if token_type == 1:
-                feat = self.add_time_feat(feat, ts)
             feat_list.append(feat)
-            ts_list.append(ts)
-            
-            
-        
-        ts_arr = self.norm_ts(torch.as_tensor(ts_list[1:]) / 60 / 60)
-        ts_arr = torch.diff(ts_arr) + 1
-        
-        ts_arr = torch.clamp(ts_arr, max=const.model_param.time_span)
-        ts_arr = torch.cat([torch.tensor([0, 0]), ts_arr]).long()
-        feat_list = self.fill_ts(ts_arr, feat_list)
+            if token_type == 1:
+                ts_list.append(ts)
+        time_feat = self.add_time_feat(ts_list)
         
         id_list = MyDataset.pad_seq(id_list, const.max_seq_len + 1, 0)
         token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len + 1, 0)
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len + 1, 0)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len + 1, {})
-        
 
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \
                 torch.as_tensor(action_type_list).int(), \
-                    MyDataset.collect_features(feat_list)
+                    {
+                        **MyDataset.collect_features(feat_list, include_context=False),
+                        **time_feat
+                    }
                 
 
     @classmethod
@@ -271,7 +287,6 @@ class MyTestDataset(Dataset):
         id_list = MyDataset.pad_seq(id_list, const.max_seq_len, 0)
         token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len, 0)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
-        
         
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \

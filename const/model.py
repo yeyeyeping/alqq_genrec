@@ -2,12 +2,14 @@ from utils import read_pickle
 class ModelParam:
     def __init__(self,indexer_file):
         self.embedding_table_size = self.read_feature_size(indexer_file)
-        self.time_span = 256
-        self.embedding_table_size["201"] = self.time_span
+        self.max_decay = 20
+        self.max_diff = 20
+        self.embedding_table_size["201"] = self.max_diff
         self.embedding_table_size["202"] = 8
         self.embedding_table_size["203"] = 25
         self.embedding_table_size["204"] = 13
         self.embedding_table_size["205"] = 32
+        self.embedding_table_size["206"] = self.max_decay
         
         self.embedding_dim = {
             "user_id":64,
@@ -50,14 +52,15 @@ class ModelParam:
             "203": 16, # hour
             "204": 16, # month
             "205": 16, # day   
+            "206": 16, # decay
         }
         self.user_dnn_units = 128
         self.item_dnn_units = 128
         self.context_dnn_units = 128
         self.dropout = 0.2
         self.hidden_units = 256
-        self.num_blocks = 4
-        self.num_heads = 4
+        self.num_blocks = 8
+        self.num_heads = 8
         self.norm_first = True
     def read_feature_size(self, indexer_file):
         indexer = read_pickle(indexer_file)

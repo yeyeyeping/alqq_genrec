@@ -61,7 +61,6 @@ def make_input_and_label(seq_id, token_type, action_type, feat):
     label_token_type = token_type[:,1:].clone()
     label_action_type = action_type[:,1:].clone()
     label_feat = {k:v[:,1:].clone() for k,v in feat.items() if k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
-    # 忽略正样本中的时间特征
     return input_ids, input_token_type, input_action_type, input_feat, label_ids, label_token_type, label_action_type, label_feat
 
 def train_one_step(batch, emb_loader, loader, model:BaselineModel):

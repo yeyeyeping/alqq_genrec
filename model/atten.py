@@ -1,6 +1,30 @@
 from torch import nn
 import torch.nn.functional as F
 import torch
+from typing import Tuple
+import const
+def precompute_freqs_cis(dim: int, seq_len: int, theta: float = 10000.0):
+    freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
+    t = torch.arange(seq_len, device=freqs.device)
+    freqs = torch.outer(t, freqs).float()  # 计算m * \theta
+
+    freqs_cis = torch.polar(torch.ones_like(freqs), freqs) 
+    return freqs_cis
+
+def apply_rotary_emb(
+    xq: torch.Tensor,
+    xk: torch.Tensor,
+    freqs_cis: torch.Tensor,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    xq_ = xq.float().reshape(*xq.shape[:-1], -1, 2)
+    xk_ = xk.float().reshape(*xk.shape[:-1], -1, 2)
+    
+    xq_ = torch.view_as_complex(xq_)
+    xk_ = torch.view_as_complex(xk_)
+    
+    xq_out = torch.view_as_real(xq_ * freqs_cis).reshape(*xq.shape)
+    xk_out = torch.view_as_real(xk_ * freqs_cis).reshape(*xk.shape)
+    return xq_out.type_as(xq), xk_out.type_as(xk)
 
 class PointWiseFeedForward(nn.Module):
     def __init__(self, hidden_units, dropout_rate):
@@ -32,7 +56,9 @@ class FlashMultiHeadAttention(nn.Module):
         self.k_linear = nn.Linear(hidden_units, hidden_units)
         self.v_linear = nn.Linear(hidden_units, hidden_units)
         self.out_linear = nn.Linear(hidden_units, hidden_units)
-
+        freqs = precompute_freqs_cis(self.head_dim, const.max_seq_len)
+        self.register_buffer("freqs_cis", freqs)
+        
     def forward(self, query, key, value, attn_mask=None):
         batch_size, seq_len, _ = query.size()
 
@@ -45,7 +71,9 @@ class FlashMultiHeadAttention(nn.Module):
         Q = Q.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
         K = K.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
         V = V.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
-
+        
+        Q, K = apply_rotary_emb(Q, K, self.freqs_cis)
+        
         if hasattr(F, 'scaled_dot_product_attention'):
             # PyTorch 2.0+ 使用内置的Flash Attention
             attn_output = F.scaled_dot_product_attention(

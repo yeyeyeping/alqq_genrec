@@ -141,7 +141,10 @@ class ContextTower(nn.Module):
         )
 
     def get_context_feature_dim(self):
-        return const.model_param.embedding_dim['item_id']
+        dim = 0
+        for feat_id in const.context_feature.sparse_feature_ids:
+            dim += const.model_param.embedding_dim[feat_id]
+        return dim
     
 
     def setup_embedding_layer(self):
@@ -149,7 +152,7 @@ class ContextTower(nn.Module):
         for feat_id in const.context_feature.sparse_feature_ids:
             emb_dict[feat_id] = nn.Embedding(const.model_param.embedding_table_size[feat_id] + 1, 
                                                     const.model_param.embedding_dim[feat_id], 
-                                                    padding_idx=0 )
+                                                    padding_idx=0)
         return emb_dict
 
     def forward(self, feature_dict):
@@ -171,6 +174,7 @@ class BaselineModel(nn.Module):
             # nn.LayerNorm(const.model_param.hidden_units),
             # nn.Dropout(const.model_param.dropout),
         )
+        self.context_dnn = nn.Linear(const.model_param.hidden_units * 2, const.model_param.hidden_units)
         
         self.pos_embedding = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
         self.emb_dropout = nn.Dropout(const.model_param.dropout)
@@ -179,13 +183,13 @@ class BaselineModel(nn.Module):
                                                         const.model_param.num_heads,
                                                         const.model_param.dropout,
                                                         const.model_param.norm_first)
-            
+        
     def add_pos_embedding(self, seqs_id, emb, ):
-        emb *= const.model_param.hidden_units ** 0.5
-        valid_mask = (seqs_id != 0).long()
-        poss = torch.cumsum(valid_mask, dim=1)
-        poss = poss * valid_mask
-        emb += self.pos_embedding(poss)
+        # emb *= const.model_param.hidden_units ** 0.5
+        # valid_mask = (seqs_id != 0).long()
+        # poss = torch.cumsum(valid_mask, dim=1)
+        # poss = poss * valid_mask
+        # emb += self.pos_embedding(poss)
         emb = self.emb_dropout(emb)
         return emb
     
@@ -201,7 +205,10 @@ class BaselineModel(nn.Module):
         item_feat = self.forward_item(seq_id, feature_dict, token_type)
         user_feat = self.user_tower(seq_id, token_type == 2, feature_dict)
         context_feat = self.context_tower(feature_dict)
-        all_feat = user_feat + item_feat + context_feat
+        seq_feat = torch.cat([item_feat, context_feat], dim=-1)
+        seq_feat = self.context_dnn(seq_feat)
+        
+        all_feat = user_feat + seq_feat
         return self.merge_dnn(all_feat)
     
         

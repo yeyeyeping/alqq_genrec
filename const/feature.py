@@ -70,7 +70,9 @@ class ContextFeature:
             "202",
             "203",
             "204",
-            "205",)
+            "205",
+            "206",
+        )
         
         self.all_feature_ids = sorted(list(self.sparse_feature_ids))
         
