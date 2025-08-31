@@ -83,7 +83,6 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         neg_emb = model.forward_item(neg_id, neg_feat)
         pos_emb = model.forward_item(next_ids, next_feat, next_token_type)
         
-        
         indices = torch.where(next_token_type == 1) 
         mask = torch.isin(neg_id,seq_id,)
         
@@ -113,7 +112,6 @@ def valid_one_step(batch, emb_loader, loader, model:BaselineModel):
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
         input_ids, input_token_type, input_action_type, input_feat, next_ids, next_token_type, next_action_type, next_feat \
                     = make_input_and_label(seq_id, token_type, action_type, feat)
-        
         
         next_token_emb = model(input_ids, input_token_type, input_feat)
         

@@ -1,4 +1,6 @@
-
+def pad_array(feat_value, max_len):
+    pad_len = max_len - len(feat_value)
+    return feat_value + [0] * pad_len
 class UserFeature:
     def __init__(self):
         self.sparse_feature_ids = ('103', '104', '105', '109')
@@ -6,20 +8,17 @@ class UserFeature:
         self.array_feature_ids = ('106', '107', '108', '110')
         self.all_feature_ids = sorted(list(self.sparse_feature_ids) + list(self.dense_feature_ids) + list(self.array_feature_ids))
 
-    def pad_array(self, feat_value, max_len):
-        pad_len = max_len - len(feat_value)
-        return feat_value + [0] * pad_len
     
     
     def pad_array_feature(self, feat_id, feat_value):
         if feat_id == '106':
-            return self.pad_array(feat_value, 8)
+            return pad_array(feat_value, 8)
         elif feat_id == '107':
-            return self.pad_array(feat_value, 1)
+            return pad_array(feat_value, 1)
         elif feat_id == '108':
-            return self.pad_array(feat_value, 2)
+            return pad_array(feat_value, 2)
         elif feat_id == '110':
-            return self.pad_array(feat_value, 2)
+            return pad_array(feat_value, 2)
         
     def fill(self, feat_id):
         if feat_id in self.sparse_feature_ids:
@@ -73,12 +72,16 @@ class ContextFeature:
             "205",
             "206",
         )
+        self.seq_len = 10
+        self.array_feature_ids = ("210", )
         
-        self.all_feature_ids = sorted(list(self.sparse_feature_ids))
-        
+        self.all_feature_ids = sorted(list(self.sparse_feature_ids) + list(self.array_feature_ids))
+    
     def fill(self, feat_id):
         if feat_id in self.sparse_feature_ids:
             return 0
+        elif feat_id in self.array_feature_ids:
+            return pad_array([0, ] ,self.seq_len)
         else:
             raise ValueError(f"Invalid feature id: {feat_id}")
         

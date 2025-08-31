@@ -131,7 +131,7 @@ class ItemTower(nn.Module):
         return self.dnn(item_features)
 
 class ContextTower(nn.Module):
-    def __init__(self):
+    def __init__(self, item_embedding):
         super().__init__()
         self.sparse_emb = self.setup_embedding_layer()
         self.dnn = nn.Sequential(
@@ -139,12 +139,13 @@ class ContextTower(nn.Module):
             nn.ReLU(),
             nn.Linear(const.model_param.context_dnn_units, const.model_param.hidden_units),
         )
-
+        self.item_embedding = item_embedding
+        
     def get_context_feature_dim(self):
         dim = 0
         for feat_id in const.context_feature.sparse_feature_ids:
             dim += const.model_param.embedding_dim[feat_id]
-        return dim
+        return dim + const.model_param.embedding_dim['item_id']
     
 
     def setup_embedding_layer(self):
@@ -160,6 +161,16 @@ class ContextTower(nn.Module):
         for feat_id in const.context_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
             feature_dict.pop(feat_id)
+
+        mask = (feature_dict['210'] != 0).long()
+        user_seq_emb = torch.sum(self.item_embedding(feature_dict['210']), dim=-2)
+        valid_mask = (mask.sum(-1) != 0)
+        user_seq_emb = torch.where(valid_mask.unsqueeze(-1), 
+                                   user_seq_emb / mask.sum(-1).unsqueeze(-1).clamp(min=1), 
+                                   torch.zeros_like(user_seq_emb))
+        feat_emb_list.append(user_seq_emb)
+        feature_dict.pop('210')
+        
         context_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(context_features)
 
@@ -168,7 +179,7 @@ class BaselineModel(nn.Module):
         super().__init__()
         self.item_tower = ItemTower()
         self.user_tower = UserTower()
-        self.context_tower = ContextTower()
+        self.context_tower = ContextTower(self.item_tower.sparse_emb['item_id'])
         self.merge_dnn = nn.Sequential(
             nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units),
             # nn.LayerNorm(const.model_param.hidden_units),

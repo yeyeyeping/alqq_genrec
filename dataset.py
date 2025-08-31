@@ -52,9 +52,11 @@ class MyDataset(Dataset):
                 seq = torch.cat([default_value.repeat(max_len - len(seq)), seq])
             else:
                 raise ValueError(f"Invalid default value type: {type(seq)}")
-        else:
-            seq = seq[:max_len]
+        elif len(seq) > max_len:
             print(f"seq length is greater than max_len, seq length: {len(seq)}, max_len: {max_len}")
+            seq = seq[:max_len]
+        else:
+            pass
         return seq
     
     def norm_ts(self, ts: torch.Tensor) -> torch.Tensor:
@@ -102,26 +104,34 @@ class MyDataset(Dataset):
         action_type_list = []
         feat_list = []
         ts_list = []
+        front_click_item = []
+        seq_list = []
         for i, feat, token_type, action_type, ts in ext_user_seq:
             id_list.append(i)
             token_type_list.append(token_type)
             action_type_list.append(action_type if action_type is not None else 0)
             feat_list.append(feat)
+            
+            seq_list.append(MyDataset.pad_seq(front_click_item[-const.context_feature.seq_len:].copy(), const.context_feature.seq_len, 0))
             if token_type == 1:
                 ts_list.append(ts)
+            if action_type == 1:
+                front_click_item.append(i)
+                
         time_feat = self.add_time_feat(ts_list)
         
         id_list = MyDataset.pad_seq(id_list, const.max_seq_len + 1, 0)
         token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len + 1, 0)
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len + 1, 0)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len + 1, {})
-
+        seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len + 1, [0] *const.context_feature.seq_len)
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \
                 torch.as_tensor(action_type_list).int(), \
                     {
                         **MyDataset.collect_features(feat_list, include_context=False),
-                        **time_feat
+                        **time_feat,
+                        "210": torch.as_tensor(seq_list, dtype=torch.int32)
                     }
                 
 
@@ -162,6 +172,7 @@ class MyDataset(Dataset):
             for feat_id, feat_value in feat.items():
                 feature_name_value_list[feat_id].append(feat_value)
         out_dict = {}
+        
         for k, v in feature_name_value_list.items():
             if k in const.user_feature.array_feature_ids + const.user_feature.sparse_feature_ids  + const.item_feature.sparse_feature_ids + const.context_feature.sparse_feature_ids:
                 out_dict[k] = torch.as_tensor(v, dtype=torch.int32)
