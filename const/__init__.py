@@ -26,13 +26,13 @@ max_seq_len = 101
 l2_alpha = 1e-7
 device = "cuda"
 batch_size = 128
-num_workers = 5
+num_workers = 8
 num_epochs = 10
 warmup_t = 2000
 lr = 1e-3
 seed = 3407
 neg_sample_num = 30000
-temperature = 0.07
+temperature = 0.04
 grad_norm = 1.0
 # 推理相关
 infer_batch_size = 512

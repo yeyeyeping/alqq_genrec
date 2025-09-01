@@ -110,7 +110,7 @@ class AttentionDecoder(nn.Module):
         self.forward_layers = torch.nn.ModuleList()
         self.norm_first = norm_first
         for _ in range(blocks):
-            new_attn_layernorm = torch.nn.LayerNorm(hidden_units, eps=1e-8)
+            new_attn_layernorm = torch.nn.RMSNorm(hidden_units, eps=1e-8)
             self.attention_layernorms.append(new_attn_layernorm)
 
             new_attn_layer = FlashMultiHeadAttention(
@@ -118,13 +118,13 @@ class AttentionDecoder(nn.Module):
             )  # 优化：用FlashAttention替代标准Attention
             self.attention_layers.append(new_attn_layer)
 
-            new_fwd_layernorm = torch.nn.LayerNorm(hidden_units, eps=1e-8)
+            new_fwd_layernorm = torch.nn.RMSNorm(hidden_units, eps=1e-8)
             self.forward_layernorms.append(new_fwd_layernorm)
 
             new_fwd_layer = PointWiseFeedForward(hidden_units, dropout_rate)
             self.forward_layers.append(new_fwd_layer)
         
-        self.last_layernorm = torch.nn.LayerNorm(hidden_units, eps=1e-8)
+        self.last_layernorm = torch.nn.RMSNorm(hidden_units, eps=1e-8)
         
     def forward(self, seqs, attention_mask):
         for i in range(len(self.attention_layers)):

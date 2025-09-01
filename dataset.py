@@ -32,7 +32,7 @@ class MyDataset(Dataset):
         return data
 
     def format_user_seq(self, user_sequence):
-        # user_sequence = sorted(user_sequence, key=lambda x: x[-1])
+        user_sequence = sorted(user_sequence, key=lambda x: x[-1])
         ext_user_sequence = []
         for record_tuple in user_sequence:
             u, i, user_feat, item_feat, action_type, ts = record_tuple
@@ -58,7 +58,7 @@ class MyDataset(Dataset):
         else:
             pass
         return seq
-
+    
     def norm_ts(self, ts: torch.Tensor) -> torch.Tensor:
         ts = ts.long()
         diffs = torch.diff(ts).abs()
@@ -94,7 +94,8 @@ class MyDataset(Dataset):
             
         }
         return out_time_feat
-
+        
+    
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
         ext_user_seq = self.format_user_seq(user_seq)
@@ -133,6 +134,7 @@ class MyDataset(Dataset):
                         "210": torch.as_tensor(seq_list, dtype=torch.int32)
                     }
                 
+
     @classmethod
     def fill_feature(cls, feat,include_user=True, include_item=True, include_context=True):
         filled_feat = {}
@@ -203,6 +205,20 @@ class MyTestDataset(Dataset):
         line = self.seq_file_fp.readline()
         data = json.loads(line)
         return data
+    def norm_ts(self, ts: torch.Tensor) -> torch.Tensor:
+        ts = ts.long()
+        diffs = torch.diff(ts).abs()
+        pos_diffs = diffs[diffs > 0]
+        time_scale = pos_diffs.min() if pos_diffs.numel() > 0 else ts.new_tensor(1.0)
+        norm = torch.round((ts - ts.min()) / time_scale).to(torch.long) + 1
+        return norm
+    
+    def fill_ts(self, ts_arr, feat_list):
+        
+        for ts,feat in zip(ts_arr, feat_list):
+            feat['201'] = ts
+        
+        return feat_list
     @classmethod
     def _process_cold_start_feat(cls, feat):
         """
@@ -220,7 +236,7 @@ class MyTestDataset(Dataset):
         return processed_feat
     
     def format_user_seq(self, user_sequence):
-        # user_sequence = sorted(user_sequence, key=lambda x: x[-1])
+        user_sequence = sorted(user_sequence, key=lambda x: x[-1])
         ext_user_sequence = []
         user_id = None
         for record_tuple in user_sequence:
@@ -237,6 +253,7 @@ class MyTestDataset(Dataset):
                 if user_feat:
                     user_feat = self._process_cold_start_feat(user_feat)
                 ext_user_sequence.insert(0, (u, user_feat, 2, action_type,ts))
+
             if i and item_feat:
                 # 序列对于训练时没见过的item，不会直接赋0，而是保留creative_id，creative_id远大于训练时的itemnum
                 if i > self.itemnum:
@@ -304,7 +321,7 @@ class MyTestDataset(Dataset):
         token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len, 0)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
         seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0] *const.context_feature.seq_len)
-
+                
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \
                     {**MyDataset.collect_features(feat_list, include_context=False), \
@@ -314,7 +331,7 @@ class MyTestDataset(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = MyTestDataset(data_path='/home/yeep/project/alqq_generc/data/test_data')
+    dataset = MyDataset(data_path='/home/yeep/project/alqq_generc/data/TencentGR_1k')
     dataloader = DataLoader(dataset, batch_size=10, shuffle=False)
     for d in dataloader:
         print(d)
