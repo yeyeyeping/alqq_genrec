@@ -185,11 +185,11 @@ class BaselineModel(nn.Module):
                                                         const.model_param.norm_first)
         
     def add_pos_embedding(self, seqs_id, emb, ):
-        # emb *= const.model_param.hidden_units ** 0.5
-        # valid_mask = (seqs_id != 0).long()
-        # poss = torch.cumsum(valid_mask, dim=1)
-        # poss = poss * valid_mask
-        # emb += self.pos_embedding(poss)
+        emb *= const.model_param.hidden_units ** 0.5
+        valid_mask = (seqs_id != 0).long()
+        poss = torch.cumsum(valid_mask, dim=1)
+        poss = poss * valid_mask
+        emb += self.pos_embedding(poss)
         emb = self.emb_dropout(emb)
         return emb
     
