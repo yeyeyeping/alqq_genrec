@@ -32,7 +32,7 @@ warmup_t = 2000
 lr = 1e-3
 seed = 3407
 neg_sample_num = 30000
-temperature = 0.04
+temperature = 0.07
 grad_norm = 1.0
 # 推理相关
 infer_batch_size = 512

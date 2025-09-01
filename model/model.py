@@ -92,11 +92,6 @@ class ItemTower(nn.Module):
         for feat_id in const.item_feature.mm_emb_feature_ids:
             num += const.model_param.embedding_dim[feat_id]
             print(f"{feat_id} : {num}",end=", ")
-        
-        for feat_id in const.item_feature.handcraft_feature:
-            num += const.model_param.embedding_dim[feat_id]
-            print(f"{feat_id} : {num}",end=", ")
-        
         print(f"dense : {num}")
         return num
     
@@ -112,16 +107,9 @@ class ItemTower(nn.Module):
         
     def forward(self, seq_id, item_mask, feature_dict):
         id_embedding = self.sparse_emb['item_id'](seq_id * item_mask)
-        # 用户点击过的item的平均向量, b x seq_len x max_seq_len
-        mask = (feature_dict['210'] != 0).long()
-        user_seq_emb = torch.sum(self.sparse_emb['item_id'](feature_dict['210']), dim=-2)
-        valid_mask = (mask.sum(-1) != 0)
-        # 计算平均，对于没有行为序列的用户保持为0向量
-        user_seq_emb = torch.where(valid_mask.unsqueeze(-1), 
-                                   user_seq_emb / mask.sum(-1).unsqueeze(-1).clamp(min=1), 
-                                   torch.zeros_like(user_seq_emb))
         
-        feat_emb_list = [id_embedding, user_seq_emb]
+        feat_emb_list = [id_embedding, ]
+        
         for feat_id in const.item_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
         
@@ -129,7 +117,7 @@ class ItemTower(nn.Module):
             feat_emb_list.append(feature_dict[feat_id].unsqueeze(-1))
             
         for feat_id in const.item_feature.mm_emb_feature_ids:
-            feat_emb_list.append(F.dropout(self.mm_liner[feat_id](feature_dict[feat_id]), p=0.4))
+            feat_emb_list.append(self.mm_liner[feat_id](feature_dict[feat_id]))
         
         item_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(item_features)
