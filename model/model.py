@@ -126,7 +126,6 @@ class ItemTower(nn.Module):
         for feat_id in const.item_feature.mm_emb_feature_ids:
             feat_emb_list.append(F.dropout(self.mm_liner[feat_id](feature_dict[feat_id]), p=0.4))
             feature_dict.pop(feat_id)
-        
         item_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(item_features)
 

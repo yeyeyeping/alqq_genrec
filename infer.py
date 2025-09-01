@@ -37,13 +37,13 @@ def next_batched_item(indexer, batch_size=512):
             feature = MyTestDataset._process_cold_start_feat(feature)
             
             item_id_list.append(item_id)
-            feature_list.append(feature)
+            feature_list.append(MyDataset.ensure_item_feat(feature))
             creative_id_list.append(creative_id)
             
             # Yield when we have accumulated batch_size items
             if len(item_id_list) == batch_size:
                 item_id_tensor = torch.as_tensor(item_id_list)
-                feature_tensor = MyDataset.collect_features(feature_list,include_user=False,include_context=False)
+                feature_tensor = MyDataset.collect_item_feat(feature_list,to_tensor=True)
                 creative_id_tensor = torch.as_tensor(creative_id_list)
                 yield item_id_tensor, feature_tensor, creative_id_tensor
                 item_id_list.clear()
@@ -53,7 +53,7 @@ def next_batched_item(indexer, batch_size=512):
         # Yield any remaining items
         if item_id_list:
             item_id_tensor = torch.as_tensor(item_id_list)
-            feature_tensor = MyDataset.collect_features(feature_list,include_user=False,include_context=False)
+            feature_tensor = MyDataset.collect_item_feat(feature_list,to_tensor=True)
             creative_id_tensor = torch.as_tensor(creative_id_list)
             yield item_id_tensor, feature_tensor, creative_id_tensor
             
@@ -68,7 +68,8 @@ def infer():
     dataloader = DataLoader(test_dataset,
                             batch_size=4096,  # 使用正确的512 
                             num_workers=16, 
-                            pin_memory=True, 
+                            pin_memory=True,
+                            collate_fn=MyTestDataset.collate_fn, 
                             persistent_workers=True,  # 保持worker存活
                             prefetch_factor=4)  # 预取4个batch
     
@@ -88,7 +89,7 @@ def infer():
         item_id = item_id.to(const.device)
         feature = to_device(feature)
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
-            item_emb = F.normalize(model.forward_item(item_id, feature), dim=-1)
+            item_emb = F.normalize(model.item_tower(item_id, feature), dim=-1)
         item_features.append(item_emb)
         item_creative_id.append(creative_id)
     print(f"loadding {len(item_features)} item features")
@@ -103,18 +104,20 @@ def infer():
     top10_item_ids = []
     t = time.time()
     print(f"start to predict {len(dataloader) * dataloader.batch_size} user seqs")
-    for seq_id, token_type, feat_dict, user_id in dataloader:
-        feat_dict = emb_loader.add_mm_emb(seq_id, feat_dict, token_type == 1)
-        seq_id,token_type,feat_dict = seq_id.to(const.device), token_type.to(const.device), to_device(feat_dict)
+    for str_user_id, user_id, user_feat, action_type, item_id, item_feat, context_feat in dataloader:
+        item_feat = emb_loader.add_mm_emb(item_id, item_feat)
+        user_id,item_id = user_id.to(const.device), item_id.to(const.device)
+        user_feat, item_feat,context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
+        
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
-            next_token_emb = model(seq_id, token_type, feat_dict)
+            next_token_emb = model(user_id, user_feat,item_id, item_feat, context_feat)
             next_token_emb = F.normalize(next_token_emb[:,-1,:], dim=-1)
             sim = next_token_emb @ item_features_tensor.T
+        
         _, indices = torch.topk(sim, k = 10)
         top10_item_ids += item_creative_id_tensor[indices.cpu()].tolist()
         
-        
-        user_id_list += list(user_id)
+        user_id_list += str_user_id
 
     print(f"prediction done, time cost: {time.time() - t}")
     print(f"{top10_item_ids[:10]}")

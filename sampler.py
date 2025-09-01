@@ -16,21 +16,6 @@ class NegDataset(Dataset):
     def __len__(self):
         return 0x7FFFFFFF
     
-    def collect_features(self, feat_list):
-        feature_name_value_list = defaultdict(list)
-        for feat in feat_list:
-            for feat_id, feat_value in feat.items():
-                feature_name_value_list[feat_id].append(feat_value)
-        out_dict = {}
-        for k, v in feature_name_value_list.items():
-            if k in const.item_feature.sparse_feature_ids:
-                out_dict[k] = torch.as_tensor(v, dtype=torch.int32)
-            elif k in const.item_feature.dense_feature_ids:
-                out_dict[k] = torch.as_tensor(v, dtype=torch.float32)
-            else:
-                print(f"Invalid feature id: {k}")
-        return out_dict
-        
     def __getitem__(self, index):
         neg_item_reid_list = []
         neg_item_feat_list = []
@@ -38,7 +23,7 @@ class NegDataset(Dataset):
             neg_item_reid_list.append(i)
             neg_item_feat_list.append(MyDataset.ensure_item_feat(self.item_feat_dict[str(i)]))
             
-        return torch.as_tensor(neg_item_reid_list), self.collect_features(neg_item_feat_list)
+        return torch.as_tensor(neg_item_reid_list), MyDataset.collect_item_feat(neg_item_feat_list, to_tensor=True)
 
 def collate_fn(batch):
     neg_item_reid_list, neg_item_feat_list = zip(*batch)
