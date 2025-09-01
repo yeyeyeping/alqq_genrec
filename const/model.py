@@ -4,12 +4,14 @@ class ModelParam:
         self.embedding_table_size = self.read_feature_size(indexer_file)
         self.max_decay = 20
         self.max_diff = 20
+        self.personal_time_span = 4096
         self.embedding_table_size["201"] = self.max_diff
         self.embedding_table_size["202"] = 8
         self.embedding_table_size["203"] = 25
         self.embedding_table_size["204"] = 13
         self.embedding_table_size["205"] = 32
         self.embedding_table_size["206"] = self.max_decay
+        self.embedding_table_size["207"] = self.personal_time_span
         
         self.embedding_dim = {
             "user_id":64,
@@ -53,6 +55,7 @@ class ModelParam:
             "204": 16, # month
             "205": 16, # day   
             "206": 16, # decay
+            "207": 16, # personal time span
         }
         self.user_dnn_units = 128
         self.item_dnn_units = 128

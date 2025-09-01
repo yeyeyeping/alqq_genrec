@@ -84,13 +84,20 @@ class MyDataset(Dataset):
         delta_scaled = torch.log1p(decay).int() + 1
         
         delta_scaled = torch.clamp(delta_scaled, max=const.model_param.max_decay)
+        
+        personal_diff = self.norm_ts(ts_tensor)
+        personal_diff = torch.diff(personal_diff) + 1
+        personal_diff = torch.clamp(personal_diff, max=const.model_param.personal_time_span)
+        
+        
         out_time_feat = {
             "201": MyDataset.pad_seq(log_gap, const.max_seq_len + 1, 0),
             "202": MyDataset.pad_seq(weekdays, const.max_seq_len + 1, 0),
             "203": MyDataset.pad_seq(hours, const.max_seq_len + 1, 0),
             "204": MyDataset.pad_seq(months, const.max_seq_len + 1, 0),
-            "205": MyDataset.pad_seq(days, const.max_seq_len + 1, 0),
-            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len + 1, 0)
+            "205": MyDataset.pad_seq(days, const.max_seq_len  + 1, 0),
+            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len + 1, 0),
+            "207": MyDataset.pad_seq(personal_diff, const.max_seq_len + 1, 0)
             
         }
         return out_time_feat
@@ -276,13 +283,20 @@ class MyTestDataset(Dataset):
         delta_scaled = torch.log1p(decay).int() + 1
         
         delta_scaled = torch.clamp(delta_scaled, max=const.model_param.max_decay)
+        
+        personal_diff = self.norm_ts(ts_tensor)
+        personal_diff = torch.diff(personal_diff) + 1
+        personal_diff = torch.clamp(personal_diff, max=const.model_param.personal_time_span)
+        
+        
         out_time_feat = {
             "201": MyDataset.pad_seq(log_gap, const.max_seq_len, 0),
             "202": MyDataset.pad_seq(weekdays, const.max_seq_len , 0),
             "203": MyDataset.pad_seq(hours, const.max_seq_len , 0),
             "204": MyDataset.pad_seq(months, const.max_seq_len, 0),
             "205": MyDataset.pad_seq(days, const.max_seq_len , 0),
-            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len, 0)
+            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len, 0),
+            "207": MyDataset.pad_seq(personal_diff, const.max_seq_len, 0)
             
         }
         return out_time_feat
