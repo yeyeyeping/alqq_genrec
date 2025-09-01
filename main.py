@@ -66,7 +66,6 @@ def make_input_and_label(seq_id, action_type, feat, context_feat):
 
 def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     user_id, user_feat, action_type, item_id, item_feat, context_feat = batch
-
     item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 1)
 
     user_id, item_id = user_id.to(const.device, non_blocking=True), item_id.to(const.device, non_blocking=True)

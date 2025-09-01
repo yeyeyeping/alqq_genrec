@@ -34,13 +34,16 @@ class MyDataset(Dataset):
     def format_user_seq(self, user_sequence):
         user_sequence = sorted(user_sequence, key=lambda x: x[-1])
         ext_user_sequence = []
+        uid, ufeat = 0, {}
         for record_tuple in user_sequence:
             u, i, user_feat, item_feat, action_type, ts = record_tuple
             if u and user_feat:
-                ext_user_sequence.insert(0, (u, user_feat, action_type, ts))
+                uid = u
+                ufeat = user_feat
+                    
             if i and item_feat:
                 ext_user_sequence.append((i, item_feat, action_type, ts))
-        return ext_user_sequence
+        return uid, ufeat, ext_user_sequence
     
 
     def add_time_feat(self, ts_array):
@@ -113,8 +116,7 @@ class MyDataset(Dataset):
             return pad_value + seq
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
-        ext_user_seq = self.format_user_seq(user_seq)
-        user_id, user_feat, *_ = ext_user_seq.pop(0)
+        user_id, user_feat, ext_user_seq = self.format_user_seq(user_seq)
         
         item_id_list = []
         action_type_list = []
