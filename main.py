@@ -16,6 +16,7 @@ from torch.nn import functional as F
 from utils import seed_everything, seed_worker
 from loss import info_nce_loss,l2_reg_loss
 from mm_emb_loader import Memorymm81Embloader
+from torch.optim import SGD
 def build_dataloader(dataset, batch_size, num_workers, shuffle):
     return DataLoader(
         dataset, 
@@ -60,6 +61,13 @@ def make_input_and_label(seq_id, token_type, action_type, feat):
     label_token_type = token_type[:,1:].clone()
     label_action_type = action_type[:,1:].clone()
     label_feat = {k:v[:,1:].clone() for k,v in feat.items()}
+    # 忽略正样本中的时间特征
+    label_feat['201'] = torch.zeros_like(label_feat['201'])
+    label_feat['202'] = torch.zeros_like(label_feat['202'])
+    label_feat['203'] = torch.zeros_like(label_feat['203'])
+    label_feat['204'] = torch.zeros_like(label_feat['204'])
+    label_feat['205'] = torch.zeros_like(label_feat['205'])
+    label_feat['210'] = torch.zeros_like(label_feat['210'])
     
     return input_ids, input_token_type, input_action_type, input_feat, label_ids, label_token_type, label_action_type, label_feat
 
@@ -82,8 +90,6 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
         input_ids, input_token_type, input_action_type, input_feat, next_ids, next_token_type, next_action_type, next_feat \
                     = make_input_and_label(seq_id, token_type, action_type, feat)
-        
-        
         next_token_emb = model(input_ids, input_token_type, input_feat)
         
         neg_emb = model.forward_item(neg_id, neg_feat)
@@ -91,6 +97,7 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         
         indices = torch.where(next_token_type == 1) 
         mask = torch.isin(neg_id,seq_id,)
+        
         anchor_emb = F.normalize(next_token_emb[indices[0],indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
         neg_emb = F.normalize(neg_emb[~mask], dim=-1)
@@ -151,9 +158,9 @@ if __name__ == '__main__':
     seed_everything(const.seed)
     
     dataset = MyDataset(const.data_path)
-    train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
-    train_loader = build_dataloader(train_dataset, const.batch_size, const.num_workers, True)
-    valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)
+    # train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
+    train_loader = build_dataloader(dataset, const.batch_size, const.num_workers, True)
+    # valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)
     
     
     model = BaselineModel().to(const.device)
@@ -165,9 +172,9 @@ if __name__ == '__main__':
     optimizer = torch.optim.AdamW(model.parameters(), lr=const.lr, betas=(0.9, 0.99))
     scheduler = CosineLRScheduler(
                         optimizer, 
-                        t_initial=const.num_epochs * len(train_loader), 
+                        t_initial=max(const.num_epochs * len(train_loader) - 4000,4000)  ,
                         warmup_t=const.warmup_t, 
-                        lr_min=1e-5, 
+                        lr_min=5e-5, 
                         warmup_lr_init=1e-5, 
                         t_in_epochs=False)
     
@@ -223,48 +230,52 @@ if __name__ == '__main__':
             writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
             writer.add_scalar('train/grad_norm', grad_norm, global_step)
             global_step += 1
-
-        model.eval()
-        valid_loss_sum = 0
-        valid_top1_acc_sum = 0
-        valid_top10_acc_sum = 0
-        valid_sim_pos_sum = 0
-        valid_sim_neg_sum = 0
-        valid_sim_gap_sum = 0
-        total_sample = 0
-        for step, batch in enumerate(valid_loader):
-            loss, neg_sim, pos_sim, top1_correct, top10_correct, num_sample = valid_one_step(batch, emb_loader, neg_loader, model)
-            
-            valid_loss_sum += loss * num_sample
-            valid_top1_acc_sum += top1_correct
-            valid_top10_acc_sum += top10_correct
-            total_sample += num_sample
-            valid_sim_pos_sum += pos_sim * num_sample
-            valid_sim_neg_sum += neg_sim * num_sample
-            valid_sim_gap_sum += (pos_sim - neg_sim) * num_sample
-        
-        valid_loss = valid_loss_sum / total_sample
-        valid_top1_acc = valid_top1_acc_sum / total_sample
-        valid_top10_acc = valid_top10_acc_sum / total_sample
-        valid_sim_pos = valid_sim_pos_sum / total_sample
-        valid_sim_neg = valid_sim_neg_sum / total_sample
-        valid_sim_gap = valid_sim_gap_sum / total_sample
-        
-        print(f"[EVAL] loss: {valid_loss:.4f}, top1 acc: {valid_top1_acc:.4f}, top10 acc: {valid_top10_acc:.4f}, sim_pos: {valid_sim_pos:.4f}, sim_neg: {valid_sim_neg:.4f}, sim_gap: {valid_sim_gap:.4f}")
-        
-        writer.add_scalar('valid/loss', valid_loss, global_step)
-        writer.add_scalar('valid/top1_acc', valid_top1_acc, global_step)
-        writer.add_scalar('valid/top10_acc', valid_top10_acc, global_step)
-        writer.add_scalar('valid/sim_pos', valid_sim_pos, global_step)
-        writer.add_scalar('valid/sim_neg', valid_sim_neg, global_step)
-        writer.add_scalar('valid/sim_gap', valid_sim_gap, global_step)
-
-        save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"global_step{global_step}.loss={valid_loss:.4f}.acc_top1={valid_top1_acc:.4f}.acc_top10={valid_top10_acc:.4f}")
+        save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"epoch={epoch}_global_step={global_step}.training_loss={loss:.4f}")
         save_dir.mkdir(parents=True, exist_ok=True)
         
         torch.save(model.state_dict(), save_dir / "model.pt")
+        # model.eval()
+        # valid_loss_sum = 0
+        # valid_top1_acc_sum = 0
+        # valid_top10_acc_sum = 0
+        # valid_sim_pos_sum = 0
+        # valid_sim_neg_sum = 0
+        # valid_sim_gap_sum = 0
+        # total_sample = 0
+        # for step, batch in enumerate(valid_loader):
+        #     loss, neg_sim, pos_sim, top1_correct, top10_correct, num_sample = valid_one_step(batch, emb_loader, neg_loader, model)
+            
+        #     valid_loss_sum += loss * num_sample
+        #     valid_top1_acc_sum += top1_correct
+        #     valid_top10_acc_sum += top10_correct
+        #     total_sample += num_sample
+        #     valid_sim_pos_sum += pos_sim * num_sample
+        #     valid_sim_neg_sum += neg_sim * num_sample
+        #     valid_sim_gap_sum += (pos_sim - neg_sim) * num_sample
+        
+        # valid_loss = valid_loss_sum / total_sample
+        # valid_top1_acc = valid_top1_acc_sum / total_sample
+        # valid_top10_acc = valid_top10_acc_sum / total_sample
+        # valid_sim_pos = valid_sim_pos_sum / total_sample
+        # valid_sim_neg = valid_sim_neg_sum / total_sample
+        # valid_sim_gap = valid_sim_gap_sum / total_sample
+        
+        # print(f"[EVAL] loss: {valid_loss:.4f}, top1 acc: {valid_top1_acc:.4f}, top10 acc: {valid_top10_acc:.4f}, sim_pos: {valid_sim_pos:.4f}, sim_neg: {valid_sim_neg:.4f}, sim_gap: {valid_sim_gap:.4f}")
+        
+        # writer.add_scalar('valid/loss', valid_loss, global_step)
+        # writer.add_scalar('valid/top1_acc', valid_top1_acc, global_step)
+        # writer.add_scalar('valid/top10_acc', valid_top10_acc, global_step)
+        # writer.add_scalar('valid/sim_pos', valid_sim_pos, global_step)
+        # writer.add_scalar('valid/sim_neg', valid_sim_neg, global_step)
+        # writer.add_scalar('valid/sim_gap', valid_sim_gap, global_step)
+
+        # save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"global_step{global_step}.loss={valid_loss:.4f}.acc_top1={valid_top1_acc:.4f}.acc_top10={valid_top10_acc:.4f}")
+        # save_dir.mkdir(parents=True, exist_ok=True)
+        
+        # torch.save(model.state_dict(), save_dir / "model.pt")
         
         gc.collect()
     print("Done")
+    print(const.__dict__)
     writer.close()
     log_file.close()

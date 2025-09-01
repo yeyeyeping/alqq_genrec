@@ -2,24 +2,32 @@ from utils import read_pickle
 class ModelParam:
     def __init__(self,indexer_file):
         self.embedding_table_size = self.read_feature_size(indexer_file)
+        self.time_span = 4096
+        self.embedding_table_size["201"] = self.time_span
+        self.embedding_table_size["202"] = 8
+        self.embedding_table_size["203"] = 25
+        self.embedding_table_size["204"] = 13
+        self.embedding_table_size["205"] = 32
+        
         self.embedding_dim = {
             "user_id":64,
             "item_id":96,
             # 物品特征
-            "100": 4,      # 6
-            "101": 6,     # 51
+            "100": 16,      # 6
+            "101": 16,     # 51
             "102": 32,     # 90709
             # "111": 128,    # 4783154
-            "112": 6,     # 30
-            "114": 6,     # 20
-            "115": 12,     # 691
-            "116": 6,     # 18
-            "117": 12,     # 497
+            "112": 16,     # 30
+            "114": 16,     # 20
+            "115": 16,     # 691
+            "116": 16,     # 18
+            "117": 16,     # 497
             "118": 16,     # 1426
             "119": 24,     # 4191
             "120": 24,     # 3392
             # "121": 64,    # 2135891
             "122": 32,     # 90919
+
             # 多模态特征
             "81": 64,
             "82": 128,
@@ -28,14 +36,21 @@ class ModelParam:
             "85": 128,
             "86": 128,
             # 用户特征
-            "103": 8,     # 86
-            "104": 4,      # 2
-            "105": 4,      # 7
-            "106": 6,     # 14
-            "107": 6,     # 19
-            "108": 4,      # 4
-            "109": 4,      # 3
-            "110": 4       # 2
+            "103": 16,     # 86
+            "104": 16,      # 2
+            "105": 16,      # 7
+            "106": 16,     # 14
+            "107": 16,     # 19
+            "108": 16,      # 4
+            "109": 16,      # 3
+            "110": 16,       # 2
+            
+            "201": 32,#时间特征
+            "202": 16,#weekday
+            "203": 16, #hour
+            "204": 16, #month
+            "205": 16, #day   
+            "210":96
         }
         self.user_dnn_units = 128
         self.item_dnn_units = 128
