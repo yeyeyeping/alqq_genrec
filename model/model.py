@@ -140,6 +140,7 @@ class ContextTower(nn.Module):
             nn.Linear(const.model_param.context_dnn_units, const.model_param.hidden_units),
         )
         self.item_embedding = item_embedding
+    
         
     def get_context_feature_dim(self):
         dim = 0
