@@ -85,7 +85,7 @@ class MyDataset(Dataset):
         
         delta_scaled = torch.clamp(delta_scaled, max=const.model_param.max_decay)
         
-        personal_diff = self.norm_ts(ts_tensor)
+        personal_diff = self.norm_ts(ts_tensor / 60 / 60)
         personal_diff = torch.diff(personal_diff) + 1
         personal_diff = torch.clamp(personal_diff, max=const.model_param.personal_time_span)
         
