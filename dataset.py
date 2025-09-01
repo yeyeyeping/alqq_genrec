@@ -205,6 +205,7 @@ class MyTestDataset(Dataset):
         line = self.seq_file_fp.readline()
         data = json.loads(line)
         return data
+    
     def norm_ts(self, ts: torch.Tensor) -> torch.Tensor:
         ts = ts.long()
         diffs = torch.diff(ts).abs()
@@ -213,12 +214,6 @@ class MyTestDataset(Dataset):
         norm = torch.round((ts - ts.min()) / time_scale).to(torch.long) + 1
         return norm
     
-    def fill_ts(self, ts_arr, feat_list):
-        
-        for ts,feat in zip(ts_arr, feat_list):
-            feat['201'] = ts
-        
-        return feat_list
     @classmethod
     def _process_cold_start_feat(cls, feat):
         """
