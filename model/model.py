@@ -40,8 +40,8 @@ class UserTower(nn.Module):
         return emb_dict
 
         
-    def forward(self, seq_id, user_mask, feature_dict):
-        id_embedding = self.sparse_emb['user_id'](seq_id * user_mask)
+    def forward(self, seq_id, feature_dict):
+        id_embedding = self.sparse_emb['user_id'](seq_id)
         
         feat_emb_list = [id_embedding, ]
         
@@ -110,8 +110,8 @@ class ItemTower(nn.Module):
                                                     padding_idx=0 )
         return emb_dict
         
-    def forward(self, seq_id, item_mask, feature_dict):
-        id_embedding = self.sparse_emb['item_id'](seq_id * item_mask)
+    def forward(self, seq_id, feature_dict):
+        id_embedding = self.sparse_emb['item_id'](seq_id)
         
         feat_emb_list = [id_embedding, ]
         
@@ -185,7 +185,7 @@ class BaselineModel(nn.Module):
             # nn.LayerNorm(const.model_param.hidden_units),
             # nn.Dropout(const.model_param.dropout),
         )
-        self.context_dnn = nn.Linear(const.model_param.hidden_units * 2, const.model_param.hidden_units)
+        self.context_dnn = nn.Linear(const.model_param.hidden_units * 3, const.model_param.hidden_units)
         
         self.pos_embedding = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
         self.emb_dropout = nn.Dropout(const.model_param.dropout)
@@ -204,34 +204,26 @@ class BaselineModel(nn.Module):
         emb = self.emb_dropout(emb)
         return emb
     
-        
-    def forward_item(self, seq_id, feature_dict, token_type=None):
-        if token_type is None:
-            token_type = torch.ones_like(seq_id, dtype=torch.bool, device=seq_id.device)
-        else:
-            token_type = token_type == 1
-        return self.item_tower(seq_id, token_type, feature_dict)
     
-    def forward_all_feat(self, seq_id, token_type, feature_dict):
-        item_feat = self.forward_item(seq_id, feature_dict, token_type)
-        user_feat = self.user_tower(seq_id, token_type == 2, feature_dict)
-        context_feat = self.context_tower(feature_dict)
-        seq_feat = torch.cat([item_feat, context_feat], dim=-1)
+    
+    def forward_all_feat(self, user_id, user_feat,input_ids, input_feat, context_feat):
+        item_feat = self.item_tower(input_ids, input_feat)
+        user_feat = self.user_tower(user_id, user_feat)
+        context_feat = self.context_tower(context_feat)
+        seq_feat = torch.cat([item_feat, user_feat[:,None].repeat(1,item_feat.shape[1],1),context_feat], dim=-1)
         seq_feat = self.context_dnn(seq_feat)
-        
-        all_feat = user_feat + seq_feat
-        return self.merge_dnn(all_feat)
+        return self.merge_dnn(seq_feat)
     
         
-    def forward(self, seqs_id, token_type, feat_dict):
-        emb = self.forward_all_feat(seqs_id, token_type, feat_dict)
-        feat = self.add_pos_embedding(seqs_id, emb)
+    def forward(self, user_id, user_feat, input_ids, input_feat, context_feat):
+        emb = self.forward_all_feat(user_id, user_feat,input_ids, input_feat, context_feat)
+        feat = self.emb_dropout(emb)
         
-        maxlen = seqs_id.shape[1]
+        maxlen = input_ids.shape[1]
         
-        ones_matrix = torch.ones((maxlen, maxlen), dtype=torch.bool, device=token_type.device)
+        ones_matrix = torch.ones((maxlen, maxlen), dtype=torch.bool, device=emb.device)
         attention_mask_tril = torch.tril(ones_matrix)
-        attention_mask_pad = (token_type != 0)
+        attention_mask_pad = (input_ids != 0)
         attention_mask = attention_mask_tril.unsqueeze(0) & attention_mask_pad.unsqueeze(1)
         
         log_feats = self.casual_attention_layers(feat, attention_mask)

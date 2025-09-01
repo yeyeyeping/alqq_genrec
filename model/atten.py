@@ -71,8 +71,7 @@ class FlashMultiHeadAttention(nn.Module):
         Q = Q.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
         K = K.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
         V = V.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
-        
-        Q, K = apply_rotary_emb(Q, K, self.freqs_cis)
+        Q, K = apply_rotary_emb(Q, K, self.freqs_cis[:seq_len])
         
         if hasattr(F, 'scaled_dot_product_attention'):
             # PyTorch 2.0+ 使用内置的Flash Attention

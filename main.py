@@ -25,6 +25,7 @@ def build_dataloader(dataset, batch_size, num_workers, shuffle):
         num_workers=num_workers, 
         prefetch_factor= 4,
         pin_memory=True,
+        collate_fn=MyDataset.collate_fn,
         persistent_workers=True,
         worker_init_fn=seed_worker,
     )
@@ -50,41 +51,46 @@ def to_device(batch):
             batch[k] = v.to(const.device, non_blocking=True)
     return batch
 
-def make_input_and_label(seq_id, token_type, action_type, feat):
+def make_input_and_label(seq_id, action_type, feat, context_feat):
     input_ids = seq_id[:,:-1]
-    input_token_type = token_type[:,:-1]
     input_action_type = action_type[:,:-1]
     input_feat = {k:v[:,:-1] for k,v in feat.items()}
+    context_feat = {k:v[:,:-1] for k,v in context_feat.items()}
     
     
     label_ids = seq_id[:,1:].clone()
-    label_token_type = token_type[:,1:].clone()
     label_action_type = action_type[:,1:].clone()
     label_feat = {k:v[:,1:].clone() for k,v in feat.items() if k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
-    return input_ids, input_token_type, input_action_type, input_feat, label_ids, label_token_type, label_action_type, label_feat
+    
+    return input_ids, input_action_type, input_feat,context_feat, label_ids, label_action_type, label_feat
 
 def train_one_step(batch, emb_loader, loader, model:BaselineModel):
-    seq_id, token_type, action_type, feat = batch
-    feat = emb_loader.add_mm_emb(seq_id, feat, token_type == 1)
+    user_id, user_feat, action_type, item_id, item_feat, context_feat = batch
 
+    item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 1)
+
+    user_id, item_id = user_id.to(const.device, non_blocking=True), item_id.to(const.device, non_blocking=True)
+    user_feat, item_feat, context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
+    
     # 负样本采样
     neg_id, neg_feat = next(loader)
     neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
-    seq_id, token_type, action_type, feat = \
-                seq_id.to(const.device,non_blocking=True), \
-                token_type.to(const.device,non_blocking=True), \
-                action_type.to(const.device,non_blocking=True), \
-                to_device(feat)
     neg_id, neg_feat = neg_id.to(const.device, non_blocking=True), to_device(neg_feat)
+    
+    
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
-        input_ids, input_token_type, input_action_type, input_feat, next_ids, next_token_type, next_action_type, next_feat \
-                    = make_input_and_label(seq_id, token_type, action_type, feat)
-        next_token_emb = model(input_ids, input_token_type, input_feat)
-        neg_emb = model.forward_item(neg_id, neg_feat)
-        pos_emb = model.forward_item(next_ids, next_feat, next_token_type)
         
-        indices = torch.where(next_token_type == 1) 
-        mask = torch.isin(neg_id,seq_id,)
+        input_ids, input_action_type, input_feat, context_feat,next_ids, next_action_type, next_feat \
+                    = make_input_and_label(item_id, action_type, item_feat, context_feat)
+        
+        next_token_emb = model(user_id, user_feat,input_ids, input_feat, context_feat)
+        
+        
+        neg_emb = model.item_tower(neg_id, neg_feat)
+        pos_emb = model.item_tower(next_ids, next_feat)
+
+        indices = torch.where(next_ids != 1) 
+        mask = torch.isin(neg_id, item_id,)
         
         anchor_emb = F.normalize(next_token_emb[indices[0],indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)

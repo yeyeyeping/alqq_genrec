@@ -37,39 +37,15 @@ class MyDataset(Dataset):
         for record_tuple in user_sequence:
             u, i, user_feat, item_feat, action_type, ts = record_tuple
             if u and user_feat:
-                ext_user_sequence.insert(0, (u, user_feat, 2, action_type, ts))
+                ext_user_sequence.insert(0, (u, user_feat, action_type, ts))
             if i and item_feat:
-                ext_user_sequence.append((i, item_feat, 1, action_type, ts))
+                ext_user_sequence.append((i, item_feat, action_type, ts))
         return ext_user_sequence
     
-    @classmethod
-    def pad_seq(cls, seq, max_len, default_value):
-        if len(seq) < max_len:
-            if isinstance(seq, list):
-                seq = [default_value,] * (max_len - len(seq)) + seq 
-            elif isinstance(seq, torch.Tensor):
-                default_value = torch.as_tensor(default_value)
-                seq = torch.cat([default_value.repeat(max_len - len(seq)), seq])
-            else:
-                raise ValueError(f"Invalid default value type: {type(seq)}")
-        elif len(seq) > max_len:
-            print(f"seq length is greater than max_len, seq length: {len(seq)}, max_len: {max_len}")
-            seq = seq[:max_len]
-        else:
-            pass
-        return seq
-    
-    def norm_ts(self, ts: torch.Tensor) -> torch.Tensor:
-        ts = ts.long()
-        diffs = torch.diff(ts).abs()
-        pos_diffs = diffs[diffs > 0]
-        time_scale = pos_diffs.min() if pos_diffs.numel() > 0 else ts.new_tensor(1.0)
-        norm = torch.round((ts - ts.min()) / time_scale).to(torch.long) + 1
-        return norm
-    
+
     def add_time_feat(self, ts_array):
         ts_tensor = torch.as_tensor(ts_array)
-        time_gap = torch.diff(ts_tensor,prepend=ts_tensor[0][None])
+        time_gap = torch.diff(ts_tensor, prepend=ts_tensor[0][None])
         log_gap = torch.log1p(time_gap).int() + 1
         log_gap = torch.clamp(log_gap, max=const.model_param.max_diff)
         
@@ -85,103 +61,103 @@ class MyDataset(Dataset):
         
         delta_scaled = torch.clamp(delta_scaled, max=const.model_param.max_decay)
         out_time_feat = {
-            "201": MyDataset.pad_seq(log_gap, const.max_seq_len + 1, 0),
-            "202": MyDataset.pad_seq(weekdays, const.max_seq_len + 1, 0),
-            "203": MyDataset.pad_seq(hours, const.max_seq_len + 1, 0),
-            "204": MyDataset.pad_seq(months, const.max_seq_len + 1, 0),
-            "205": MyDataset.pad_seq(days, const.max_seq_len + 1, 0),
-            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len + 1, 0)
+            "201": log_gap.tolist(),
+            "202": weekdays.tolist(),
+            "203": hours.tolist(),
+            "204": months.tolist(),
+            "205": days.tolist(),
+            "206": delta_scaled.tolist()
             
         }
         return out_time_feat
         
-    
-    def __getitem__(self, index):
-        user_seq = self._load_user_data(index)
-        ext_user_seq = self.format_user_seq(user_seq)
-        id_list = []
-        token_type_list = []
-        action_type_list = []
-        feat_list = []
-        ts_list = []
-        front_click_item = []
-        seq_list = []
-        for i, feat, token_type, action_type, ts in ext_user_seq:
-            id_list.append(i)
-            token_type_list.append(token_type)
-            action_type_list.append(action_type if action_type is not None else 0)
-            feat_list.append(feat)
-            
-            seq_list.append(MyDataset.pad_seq(front_click_item[-const.context_feature.seq_len:].copy(), const.context_feature.seq_len, 0))
-            if token_type == 1:
-                ts_list.append(ts)
-            if action_type == 1:
-                front_click_item.append(i)
-                
-        time_feat = self.add_time_feat(ts_list)
-        
-        id_list = MyDataset.pad_seq(id_list, const.max_seq_len + 1, 0)
-        token_type_list = MyDataset.pad_seq(token_type_list, const.max_seq_len + 1, 0)
-        action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len + 1, 0)
-        feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len + 1, {})
-        seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len + 1, [0] *const.context_feature.seq_len)
-        return torch.as_tensor(id_list).int(), \
-            torch.as_tensor(token_type_list).int(), \
-                torch.as_tensor(action_type_list).int(), \
-                    {
-                        **MyDataset.collect_features(feat_list, include_context=False),
-                        **time_feat,
-                        "210": torch.as_tensor(seq_list, dtype=torch.int32)
-                    }
-                
-
-    @classmethod
-    def fill_feature(cls, feat,include_user=True, include_item=True, include_context=True):
+    def ensure_user_feat(self, feat):
         filled_feat = {}
-        if include_user:
-            for feat_id in const.user_feature.all_feature_ids:
+        for feat_id in const.user_feature.all_feature_ids:
                 if feat_id not in feat.keys():
                     filled_feat[feat_id] = const.user_feature.fill(feat_id)
-                
                 else:
                     if feat_id in const.user_feature.array_feature_ids:
                         filled_feat[feat_id] = const.user_feature.pad_array_feature(feat_id, feat[feat_id])
                     else:
                         filled_feat[feat_id] = feat[feat_id]
-        
-        if include_item:
-            for feat_id in const.item_feature.all_feature_ids:
-                if feat_id not in feat.keys():
-                    filled_feat[feat_id] = const.item_feature.fill(feat_id)
-                else:
-                    filled_feat[feat_id] = feat[feat_id]
-                    
-        if include_context:
-            for feat_id in const.context_feature.all_feature_ids:
-                if feat_id not in feat.keys():
-                    filled_feat[feat_id] = const.context_feature.fill(feat_id)
-                else:
-                    filled_feat[feat_id] = feat[feat_id]
+        return filled_feat
+    @classmethod
+    def ensure_item_feat(cls, feat):
+        filled_feat = {}
+        for feat_id in const.item_feature.all_feature_ids:
+            if feat_id not in feat.keys():
+                filled_feat[feat_id] = const.item_feature.fill(feat_id)
+            else:
+                filled_feat[feat_id] = feat[feat_id]
         return filled_feat
     
-    @classmethod
-    def collect_features(cls, feat_list, include_user=True, include_item=True, include_context=True):
-        feat_list = [MyDataset.fill_feature(feat, include_user, include_item, include_context) for feat in feat_list]
-        feature_name_value_list = defaultdict(list)
-        for feat in feat_list:
-            for feat_id, feat_value in feat.items():
-                feature_name_value_list[feat_id].append(feat_value)
-        out_dict = {}
+    def collect_item_feat(self, feat_list):
+        feat = defaultdict(list)
+        for f in feat_list:
+            for i,v in f.items():
+                feat[i].append(v)
         
-        for k, v in feature_name_value_list.items():
-            if k in const.user_feature.array_feature_ids + const.user_feature.sparse_feature_ids  + const.item_feature.sparse_feature_ids + const.context_feature.sparse_feature_ids:
-                out_dict[k] = torch.as_tensor(v, dtype=torch.int32)
-            elif k in const.user_feature.dense_feature_ids + const.item_feature.dense_feature_ids:
-                out_dict[k] = torch.as_tensor(v, dtype=torch.float32)
+        return feat
+    @classmethod
+    def pad_seq(cls, seq, seq_len, pad_value):
+        pad_len = seq_len - len(seq)
+        
+        if pad_len <= 0:
+            return seq[:seq_len]
+        else:
+            if len(seq) > 0 and isinstance(seq[0], list):
+                pad_value = [[pad_value] * len(seq[0]),] * pad_len
             else:
-                print(f"Invalid feature id: {k}")
-                        
-        return out_dict
+                pad_value = [pad_value, ] * pad_len
+            return pad_value + seq
+    def __getitem__(self, index):
+        user_seq = self._load_user_data(index)
+        ext_user_seq = self.format_user_seq(user_seq)
+        user_id, user_feat, *_ = ext_user_seq.pop(0)
+        
+        item_id_list = []
+        action_type_list = []
+        feat_list = []
+        ts_list = []
+        front_click_item = []
+        seq_list = []
+        for i, feat, action_type, ts in ext_user_seq:
+            item_id_list.append(i)
+            action_type_list.append(action_type if action_type is not None else 0)
+            feat_list.append(MyDataset.ensure_item_feat(feat))
+            seq_list.append(MyDataset.pad_seq(front_click_item[-const.context_feature.seq_len:].copy(), const.context_feature.seq_len, 0))
+            ts_list.append(ts)
+            if action_type == 1:
+                front_click_item.append(i)
+        
+        user_feat = self.ensure_user_feat(user_feat)
+        
+        
+        item_feat_dict = self.collect_item_feat(feat_list)
+                
+        time_feat = self.add_time_feat(ts_list)
+        context_feat = {
+            ** time_feat,
+            "210": seq_list
+        }
+        
+        return user_id, user_feat, action_type_list, item_id_list, item_feat_dict, context_feat
+
+    def collate_fn(batch):
+        user_id_list, user_feat_list, action_type_list, item_id_list, item_feat_dict_list, context_feat_list = zip(*batch)
+        max_seq_len = max(len(c) for c in action_type_list)
+        
+        user_id = torch.as_tensor(user_id_list)
+        user_feat = {k: torch.stack([torch.as_tensor(v[k]) for v in user_feat_list]) for k in user_feat_list[0].keys()}
+        action_type = torch.stack([torch.as_tensor(MyDataset.pad_seq(a, max_seq_len, 0)) for a in action_type_list])
+        item_id = torch.stack([torch.as_tensor(MyDataset.pad_seq(a, max_seq_len, 0)) for a in item_id_list])
+        item_feat = {k: torch.stack([torch.as_tensor(MyDataset.pad_seq(v[k],max_seq_len,0)) for v in item_feat_dict_list]) for k in item_feat_dict_list[0].keys()}
+
+        context_feat = {k: torch.stack([torch.as_tensor(MyDataset.pad_seq(v[k],max_seq_len,0)) for v in context_feat_list]) for k in context_feat_list[0].keys()}
+        
+        return user_id, user_feat, action_type, item_id, item_feat, context_feat
+           
         
 class MyTestDataset(Dataset):
     def __init__(self, data_path):
@@ -327,11 +303,10 @@ class MyTestDataset(Dataset):
 
 if __name__ == "__main__":
     dataset = MyDataset(data_path='/home/yeep/project/alqq_generc/data/TencentGR_1k')
-    dataloader = DataLoader(dataset, batch_size=10, shuffle=False)
+    dataloader = DataLoader(dataset, batch_size=10, shuffle=False,collate_fn=MyDataset.collate_fn)
     for d in dataloader:
-        print(d)
-        breakpoint()
-    
+        print(d[2].shape)
+        user_id, user_feat, action_type, item_id, item_feat, context_feat = d 
 
 
 # if __name__ == "__main__":
