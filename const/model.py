@@ -43,15 +43,15 @@ class ModelParam:
             # "121": 64,    # 2135891
             "122": 32,     # 90919
 
-            # Semantic features from RQ-VAE
-            "130": 16,
-            "131": 16,
-            "132": 16,
-            "133": 16,
-            "134": 16,
-            "135": 16,
-            "136": 16,
-            "137": 16,
+            # Semantic features from RQ-VAE with hierarchical dimensions
+            "130": 16,     # Codebook size 256
+            "131": 16,     # Codebook size 256
+            "132": 16,     # Codebook size 256
+            "133": 8,      # Codebook size 128
+            "134": 8,      # Codebook size 128
+            "135": 8,      # Codebook size 64
+            "136": 8,      # Codebook size 64
+            "137": 4,      # Codebook size 32
 
             # 多模态特征
             "81": 64,

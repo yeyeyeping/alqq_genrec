@@ -86,14 +86,16 @@ class ItemTower(nn.Module):
             
     def get_item_feature_dim(self):
         print("item feature dim: ")
+        # Start with the main item_id embedding dimension
         num = const.model_param.embedding_dim['item_id']
         print(f"item_id : {num}",end=", ")
-        # Iterate over all sparse features, including the new semantic ones
+
+        # Add dimensions for all auxiliary sparse features
         for feat_id in const.item_feature.sparse_feature_ids:
-            # Check to avoid double-counting item_id if it's in sparse_feature_ids
-            if feat_id == 'item_id': continue
             num += const.model_param.embedding_dim[feat_id]
             print(f"{feat_id} : {num}",end=", ")
+        
+        # Add dimensions for dense and mm features
         num += len(const.item_feature.dense_feature_ids)
         for feat_id in const.item_feature.mm_emb_feature_ids:
             num += const.model_param.embedding_dim[feat_id]
@@ -103,35 +105,35 @@ class ItemTower(nn.Module):
     
     def setup_embedding_layer(self):
         emb_dict = nn.ModuleDict()
+        # Create the main item_id embedding layer
         emb_dict['item_id'] = nn.Embedding(const.model_param.embedding_table_size['item_id'] + 1, 
                                                     const.model_param.embedding_dim['item_id'], 
                                                     padding_idx=0)
         
-        # Create embeddings for all sparse features, including the new semantic ones
+        # Create embedding layers for all auxiliary sparse features
         for feat_id in const.item_feature.sparse_feature_ids:
-            # item_id is handled separately, avoid re-creating
-            if feat_id == 'item_id' or feat_id == '100': continue
             emb_dict[feat_id] = nn.Embedding(const.model_param.embedding_table_size[feat_id] + 1, 
                                                     const.model_param.embedding_dim[feat_id], 
                                                     padding_idx=0 )
         return emb_dict
         
     def forward(self, seq_id, item_mask, feature_dict):
-        # Use feature '100' for the main item ID embedding
-        id_embedding = self.sparse_emb['100'](feature_dict['100'] * item_mask)
-        feature_dict.pop('100')
-
+        # 1. Get embedding for the main item ID from seq_id
+        id_embedding = self.sparse_emb['item_id'](seq_id * item_mask)
+        
         feat_emb_list = [id_embedding, ]
         
+        # 2. Get embeddings for all auxiliary sparse features from feature_dict
         for feat_id in const.item_feature.sparse_feature_ids:
-            if feat_id == '100': continue # Already processed
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
             feature_dict.pop(feat_id)
         
+        # 3. Process dense features
         for feat_id in const.item_feature.dense_feature_ids:
             feat_emb_list.append(feature_dict[feat_id].unsqueeze(-1))
             feature_dict.pop(feat_id)
             
+        # 4. Process multi-modal features
         for feat_id in const.item_feature.mm_emb_feature_ids:
             feat_emb_list.append(F.dropout(self.mm_liner[feat_id](feature_dict[feat_id]), p=0.4))
             feature_dict.pop(feat_id)
@@ -195,7 +197,7 @@ class BaselineModel(nn.Module):
         super().__init__()
         self.item_tower = ItemTower()
         self.user_tower = UserTower()
-        self.context_tower = ContextTower(self.item_tower.sparse_emb['100']) # Use '100' as the item id emb
+        self.context_tower = ContextTower(self.item_tower.sparse_emb['item_id'])
         self.merge_dnn = nn.Sequential(
             nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units),
             # nn.LayerNorm(const.model_param.hidden_units),
