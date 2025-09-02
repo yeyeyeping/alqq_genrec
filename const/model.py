@@ -12,8 +12,8 @@ class ModelParam:
         self.embedding_table_size["206"] = self.max_decay
         
         self.embedding_dim = {
-            "user_id":128,
-            "item_id":128,
+            "user_id":64,
+            "item_id":96,
             # 物品特征
             "100": 16,      # 6
             "101": 16,     # 51

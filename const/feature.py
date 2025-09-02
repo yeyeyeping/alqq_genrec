@@ -4,7 +4,7 @@ def pad_array(feat_value, max_len):
 class UserFeature:
     def __init__(self):
         self.sparse_feature_ids = ('103', '104', '105', '109')
-        self.dense_feature_ids = ()
+        self.dense_feature_ids = []
         self.array_feature_ids = ('106', '107', '108', '110')
         self.all_feature_ids = sorted(list(self.sparse_feature_ids) + list(self.dense_feature_ids) + list(self.array_feature_ids))
 
