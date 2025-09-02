@@ -100,7 +100,7 @@ def sample_neg():
     if const.sampling_strategy == 'random':
         dataset = NegDataset(const.data_path)
     elif const.sampling_strategy == 'hot':
-        dataset = HotNegDataset(const.data_path)
+        dataset = HotNegDataset(const.data_path, const.hot_exp_ratio, const.hot_click_ratio)
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
     loader = DataLoader(dataset, 
