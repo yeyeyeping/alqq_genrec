@@ -11,7 +11,6 @@ class UserTower(nn.Module):
         self.sparse_emb = self.setup_embedding_layer()
 
         self.dnn = nn.Sequential(
-            nn.Dropout(const.model_param.dropout),
             nn.Linear(self.get_user_feature_dim(), const.model_param.user_dnn_units),
             nn.ReLU(),
             # nn.LayerNorm(const.model_param.user_dnn_units),
@@ -71,7 +70,6 @@ class ItemTower(nn.Module):
         super().__init__()
         self.sparse_emb = self.setup_embedding_layer()
         self.dnn = nn.Sequential(
-            nn.Dropout(const.model_param.dropout),
             nn.Linear(self.get_item_feature_dim(), const.model_param.item_dnn_units),
             nn.ReLU(),
             # nn.LayerNorm(const.model_param.item_dnn_units),
@@ -137,7 +135,6 @@ class ContextTower(nn.Module):
         super().__init__()
         self.sparse_emb = self.setup_embedding_layer()
         self.dnn = nn.Sequential(
-            nn.Dropout(const.model_param.dropout),
             nn.Linear(self.get_context_feature_dim(), const.model_param.context_dnn_units),
             nn.ReLU(),
             nn.Linear(const.model_param.context_dnn_units, const.model_param.hidden_units),
