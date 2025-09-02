@@ -92,9 +92,25 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         anchor_emb = F.normalize(next_token_emb[indices[0],indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
         neg_emb = F.normalize(neg_emb[~mask], dim=-1)
-        loss, neg_sim, pos_sim = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature)
+        loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, return_logits=True)
+        
         loss += l2_reg_loss(model,const.l2_alpha)
-    return loss, neg_sim, pos_sim
+        with torch.no_grad():
+            top1_correct, top10_correct, entropy = compute_metrics(logits)
+    return loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy 
+
+def compute_metrics(logits):
+    _, top1_indices = torch.topk(logits, k=1, largest=True, dim=1)
+    _, top10_indices = torch.topk(logits, k=10, largest=True, dim=1)
+    top1_correct = torch.any(top1_indices == 0, dim=1).sum().item()
+    top10_correct = torch.any(top10_indices == 0, dim=1).sum().item()
+    prob = logits[top1_indices[:,0] == 0].softmax(dim=-1)
+    prob = torch.clamp(prob, min=1e-5)
+    entropy = -torch.sum(prob * torch.log(prob), dim=-1).mean().item()
+    
+    top1_correct /= logits.shape[0]
+    top10_correct /= logits.shape[0]
+    return top1_correct, top10_correct, entropy
 
 @torch.no_grad()
 def valid_one_step(batch, emb_loader, loader, model:BaselineModel):
@@ -137,7 +153,7 @@ def valid_one_step(batch, emb_loader, loader, model:BaselineModel):
         top1_correct = torch.any(top1_indices == 0, dim=1).sum().item()
         top10_correct = torch.any(top10_indices == 0, dim=1).sum().item()
         
-    return loss.item(), neg_sim, pos_sim, top1_correct, top10_correct,logits.shape[0]
+    return loss.item(), neg_sim, pos_sim, top1_correct, top10_correct, logits.shape[0]
     
 if __name__ == '__main__':
     Path(os.environ.get('TRAIN_LOG_PATH')).mkdir(parents=True, exist_ok=True)
@@ -183,7 +199,7 @@ if __name__ == '__main__':
             st_time = time.perf_counter()
             optimizer.zero_grad()
             
-            loss, neg_sim, pos_sim = train_one_step(batch, emb_loader, neg_loader, model)
+            loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy = train_one_step(batch, emb_loader, neg_loader, model)
             
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
@@ -193,12 +209,14 @@ if __name__ == '__main__':
             scheduler.step_update(global_step)
             
             loss = loss.item()
-            
             log_json = json.dumps(
                 {
                     'global_step': f"{global_step}/{total_step}", 
                     "grad_norm":grad_norm,
                     'loss': loss, 
+                    "top1_correct":top1_correct,
+                    "top10_correct":top10_correct,
+                    "entropy":entropy,
                     "sim_pos":pos_sim,
                     "sim_neg":neg_sim,
                     'epoch': epoch, 
@@ -216,11 +234,14 @@ if __name__ == '__main__':
             writer.add_scalar('train/sim_pos', pos_sim, global_step)
             writer.add_scalar('train/sim_neg', neg_sim, global_step)
             writer.add_scalar('train/sim_gap', pos_sim - neg_sim, global_step)
+            writer.add_scalar('train/top1_correct', top1_correct, global_step)
+            writer.add_scalar('train/top10_correct', top10_correct, global_step)
+            writer.add_scalar('train/entropy', entropy, global_step)
             writer.add_scalar('train/loss', loss, global_step)
             writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
             writer.add_scalar('train/grad_norm', grad_norm, global_step)
             global_step += 1
-        save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"epoch={epoch}_global_step={global_step}.training_loss={loss:.4f}")
+        save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"epoch={epoch}_global_step={global_step}.training_loss={loss:.4f}.top1_correct={top1_correct:.4f}.top10_correct={top10_correct:.4f}.entropy={entropy:.4f}")
         save_dir.mkdir(parents=True, exist_ok=True)
         
         torch.save(model.state_dict(), save_dir / "model.pt")
