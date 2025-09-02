@@ -49,6 +49,8 @@ class  ItemFeature:
             '120',
             # '121',
             '122',
+            # 8 semantic features from RQ-VAE
+            '130', '131', '132', '133', '134', '135', '136', '137'
         )
         self.dense_feature_ids = ()
         self.mm_emb_feature_ids = ("81", )
@@ -71,6 +73,9 @@ class ContextFeature:
             "204",
             "205",
             "206",
+            "301", # is_repeated_101
+            "302", # is_repeated_102
+            "303", # prev_feature_101
         )
         self.seq_len = 10
         self.array_feature_ids = ("210", )

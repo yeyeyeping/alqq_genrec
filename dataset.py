@@ -106,12 +106,43 @@ class MyDataset(Dataset):
         ts_list = []
         front_click_item = []
         seq_list = []
+        
+        # --- New Feature Lists Initialization ---
+        is_repeated_101_list = []
+        is_repeated_102_list = []
+        prev_feature_101_list = []
+        prev_item_feat = {}
+        # -----------------------------------------
+
         for i, feat, token_type, action_type, ts in ext_user_seq:
             id_list.append(i)
             token_type_list.append(token_type)
             action_type_list.append(action_type if action_type is not None else 0)
             feat_list.append(feat)
             
+            # --- New Feature Generation ---
+            current_feat_101 = feat.get('101')
+            prev_feat_101 = prev_item_feat.get('101')
+            
+            current_feat_102 = feat.get('102')
+            prev_feat_102 = prev_item_feat.get('102')
+
+            # Use 2 for True, 1 for False, 0 for padding.
+            # Only calculate for items. For users, append default 'False' (1).
+            if token_type == 1:
+                # Value 2 for True, 1 for False.
+                is_repeated_101_list.append(2 if current_feat_101 is not None and current_feat_101 == prev_feat_101 else 1)
+                is_repeated_102_list.append(2 if current_feat_102 is not None and current_feat_102 == prev_feat_102 else 1)
+                prev_feature_101_list.append(prev_feat_101 if prev_feat_101 is not None else 0)
+            else:
+                is_repeated_101_list.append(1) # Default to False for user tokens
+                is_repeated_102_list.append(1)
+                prev_feature_101_list.append(0) # Padding value
+
+            if token_type == 1:
+                prev_item_feat = feat
+            # ------------------------------
+
             seq_list.append(MyDataset.pad_seq(front_click_item[-const.context_feature.seq_len:].copy(), const.context_feature.seq_len, 0))
             if token_type == 1:
                 ts_list.append(ts)
@@ -125,13 +156,25 @@ class MyDataset(Dataset):
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len + 1, 0)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len + 1, {})
         seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len + 1, [0] *const.context_feature.seq_len)
+        
+        # --- Pad New Feature Lists ---
+        is_repeated_101_list = MyDataset.pad_seq(is_repeated_101_list, const.max_seq_len + 1, 0)
+        is_repeated_102_list = MyDataset.pad_seq(is_repeated_102_list, const.max_seq_len + 1, 0)
+        prev_feature_101_list = MyDataset.pad_seq(prev_feature_101_list, const.max_seq_len + 1, 0)
+        # -----------------------------
+
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \
                 torch.as_tensor(action_type_list).int(), \
                     {
                         **MyDataset.collect_features(feat_list, include_context=False),
                         **time_feat,
-                        "210": torch.as_tensor(seq_list, dtype=torch.int32)
+                        "210": torch.as_tensor(seq_list, dtype=torch.int32),
+                        # --- Add New Features to Dict ---
+                        "301": torch.as_tensor(is_repeated_101_list, dtype=torch.int32),
+                        "302": torch.as_tensor(is_repeated_102_list, dtype=torch.int32),
+                        "303": torch.as_tensor(prev_feature_101_list, dtype=torch.int32),
+                        # --------------------------------
                     }
                 
 

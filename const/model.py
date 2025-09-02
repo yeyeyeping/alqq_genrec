@@ -10,6 +10,19 @@ class ModelParam:
         self.embedding_table_size["204"] = 13
         self.embedding_table_size["205"] = 32
         self.embedding_table_size["206"] = self.max_decay
+        self.embedding_table_size["301"] = 3 # PAD=0, FALSE=1, TRUE=2
+        self.embedding_table_size["302"] = 3 # PAD=0, FALSE=1, TRUE=2
+        self.embedding_table_size["303"] = self.embedding_table_size["101"] # Vocab size is the same as feature 101
+
+        # Semantic features from RQ-VAE codebook sizes
+        self.embedding_table_size["130"] = 256
+        self.embedding_table_size["131"] = 256
+        self.embedding_table_size["132"] = 256
+        self.embedding_table_size["133"] = 128
+        self.embedding_table_size["134"] = 128
+        self.embedding_table_size["135"] = 64
+        self.embedding_table_size["136"] = 64
+        self.embedding_table_size["137"] = 32
         
         self.embedding_dim = {
             "user_id":64,
@@ -29,6 +42,16 @@ class ModelParam:
             "120": 24,     # 3392
             # "121": 64,    # 2135891
             "122": 32,     # 90919
+
+            # Semantic features from RQ-VAE
+            "130": 16,
+            "131": 16,
+            "132": 16,
+            "133": 16,
+            "134": 16,
+            "135": 16,
+            "136": 16,
+            "137": 16,
 
             # 多模态特征
             "81": 64,
@@ -53,6 +76,10 @@ class ModelParam:
             "204": 16, # month
             "205": 16, # day   
             "206": 16, # decay
+            
+            "301": 16, # is_repeated_101
+            "302": 16, # is_repeated_102
+            "303": 16, # prev_feature_101
         }
         self.user_dnn_units = 128
         self.item_dnn_units = 128

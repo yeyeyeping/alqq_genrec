@@ -88,7 +88,10 @@ class ItemTower(nn.Module):
         print("item feature dim: ")
         num = const.model_param.embedding_dim['item_id']
         print(f"item_id : {num}",end=", ")
+        # Iterate over all sparse features, including the new semantic ones
         for feat_id in const.item_feature.sparse_feature_ids:
+            # Check to avoid double-counting item_id if it's in sparse_feature_ids
+            if feat_id == 'item_id': continue
             num += const.model_param.embedding_dim[feat_id]
             print(f"{feat_id} : {num}",end=", ")
         num += len(const.item_feature.dense_feature_ids)
@@ -104,18 +107,24 @@ class ItemTower(nn.Module):
                                                     const.model_param.embedding_dim['item_id'], 
                                                     padding_idx=0)
         
+        # Create embeddings for all sparse features, including the new semantic ones
         for feat_id in const.item_feature.sparse_feature_ids:
+            # item_id is handled separately, avoid re-creating
+            if feat_id == 'item_id' or feat_id == '100': continue
             emb_dict[feat_id] = nn.Embedding(const.model_param.embedding_table_size[feat_id] + 1, 
                                                     const.model_param.embedding_dim[feat_id], 
                                                     padding_idx=0 )
         return emb_dict
         
     def forward(self, seq_id, item_mask, feature_dict):
-        id_embedding = self.sparse_emb['item_id'](seq_id * item_mask)
-        
+        # Use feature '100' for the main item ID embedding
+        id_embedding = self.sparse_emb['100'](feature_dict['100'] * item_mask)
+        feature_dict.pop('100')
+
         feat_emb_list = [id_embedding, ]
         
         for feat_id in const.item_feature.sparse_feature_ids:
+            if feat_id == '100': continue # Already processed
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
             feature_dict.pop(feat_id)
         
@@ -143,13 +152,17 @@ class ContextTower(nn.Module):
         
     def get_context_feature_dim(self):
         dim = 0
+        # Add dimensions for all sparse context features defined in const/feature.py
         for feat_id in const.context_feature.sparse_feature_ids:
             dim += const.model_param.embedding_dim[feat_id]
-        return dim + const.model_param.embedding_dim['item_id']
+        
+        # Add dimension for the sequence embedding from feature '210'
+        dim += const.model_param.embedding_dim['item_id']
+        return dim
     
-
     def setup_embedding_layer(self):
         emb_dict = nn.ModuleDict()
+        # Create embedding layers for all sparse context features
         for feat_id in const.context_feature.sparse_feature_ids:
             emb_dict[feat_id] = nn.Embedding(const.model_param.embedding_table_size[feat_id] + 1, 
                                                     const.model_param.embedding_dim[feat_id], 
@@ -158,10 +171,13 @@ class ContextTower(nn.Module):
 
     def forward(self, feature_dict):
         feat_emb_list = []
+        
+        # Process all sparse context features
         for feat_id in const.context_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
             feature_dict.pop(feat_id)
 
+        # Process the user's historical clicked item sequence feature '210'
         mask = (feature_dict['210'] != 0).long()
         user_seq_emb = torch.sum(self.item_embedding(feature_dict['210']), dim=-2)
         valid_mask = (mask.sum(-1) != 0)
@@ -179,7 +195,7 @@ class BaselineModel(nn.Module):
         super().__init__()
         self.item_tower = ItemTower()
         self.user_tower = UserTower()
-        self.context_tower = ContextTower(self.item_tower.sparse_emb['item_id'])
+        self.context_tower = ContextTower(self.item_tower.sparse_emb['100']) # Use '100' as the item id emb
         self.merge_dnn = nn.Sequential(
             nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units),
             # nn.LayerNorm(const.model_param.hidden_units),
