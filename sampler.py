@@ -6,6 +6,8 @@ import random
 import multiprocessing as mp
 from torch.utils.data import Dataset,DataLoader
 import const
+import os
+import pickle
 class NegDataset(Dataset):
     def __init__(self, data_path):
         self.data_path = Path(data_path)
@@ -26,6 +28,63 @@ class NegDataset(Dataset):
                                                                                include_user=False, 
                                                                                include_context=False)
 
+class HotNegDataset(Dataset):
+    def __init__(self, data_path, hot_exp_ratio=0.2, hot_click_ratio=0.05):
+        self.data_path = Path(data_path)
+        self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
+        self.item_num = list(range(1, len(self.item_feat_dict) + 1))
+        item_expression_num,item_click_num = self._load_data_info()
+        self.hot_expression = self.keep_hot_expression_item(item_expression_num)
+        self.hot_click = self.keep_hot_click_item(item_click_num)
+        self.hot_expression_ratio = hot_exp_ratio
+        self.hot_click_ratio = hot_click_ratio
+        print(f"hot expression item: {len(self.hot_expression)}, hot click item: {len(self.hot_click)}")
+        
+    def __len__(self):
+        return 0x7FFFFFFF
+    
+    def keep_hot_expression_item(self,item_expression_num):
+        hot_expression_item = []
+        for k,v in item_expression_num.items():
+            if v >= 5:
+                hot_expression_item.append(k)
+        return hot_expression_item
+    
+    def keep_hot_click_item(self,item_click_num):
+        hot_click_item = []
+        for k,v in item_click_num.items():
+            if v >= 4:
+                hot_click_item.append(k)
+        return hot_click_item
+        
+    def _load_data_info(self):
+        cache_path = Path(os.environ.get('USER_CACHE_PATH'))
+        
+        with open(cache_path/"data_info.pkl", "rb") as f:
+            data_info = pickle.load(f)
+        return data_info['item_expression_num'], data_info['item_click_num']
+            
+    def __getitem__(self, index):
+        neg_item_reid_list = []
+        neg_item_feat_list = []
+        for i in range(256):
+            sampled_id = 0
+            p = random.random()
+            if p < self.hot_click_ratio:
+                sampled_id = random.choice(self.hot_click)
+            elif p < self.hot_expression_ratio:
+                sampled_id = random.choice(self.hot_expression)
+            else:
+                sampled_id = random.choice(self.item_num)
+            
+            neg_item_reid_list.append(sampled_id)
+            neg_item_feat_list.append(self.item_feat_dict[str(sampled_id)])
+            
+            
+        return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
+                                                                               include_user=False, 
+                                                                               include_context=False)
+
 def collate_fn(batch):
     neg_item_reid_list, neg_item_feat_list = zip(*batch)
     reid = torch.cat(neg_item_reid_list)
@@ -37,13 +96,20 @@ def collate_fn(batch):
     return reid, out_dict
 
 def sample_neg():
-    loader = DataLoader(NegDataset(const.data_path), 
+    dataset = None
+    if const.sampling_strategy == 'random':
+        dataset = NegDataset(const.data_path)
+    elif const.sampling_strategy == 'hot':
+        dataset = HotNegDataset(const.data_path)
+    else:
+        raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
+    loader = DataLoader(dataset, 
                         batch_size=const.neg_sample_num // 256,
                         collate_fn=collate_fn,
                         num_workers=5,
                         prefetch_factor=2,
                         )
-
+    
     return loader
             
 # class BaseSampler:

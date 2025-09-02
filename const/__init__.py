@@ -31,6 +31,7 @@ num_epochs = 10
 warmup_t = 2000
 lr = 2e-3
 seed = 3407
+sampling_strategy = "hot" # hot
 neg_sample_num = 30000
 temperature = 0.04
 grad_norm = 1.0
