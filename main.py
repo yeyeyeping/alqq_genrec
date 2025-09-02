@@ -25,7 +25,6 @@ def build_dataloader(dataset, batch_size, num_workers, shuffle):
         num_workers=num_workers, 
         prefetch_factor= 4,
         pin_memory=True,
-        collate_fn=MyDataset.collate_fn,
         persistent_workers=True,
         worker_init_fn=seed_worker,
     )
@@ -57,12 +56,11 @@ def make_input_and_label(seq_id, action_type, feat, context_feat):
     input_feat = {k:v[:,:-1] for k,v in feat.items()}
     context_feat = {k:v[:,:-1] for k,v in context_feat.items()}
     
-    
     label_ids = seq_id[:,1:].clone()
     label_action_type = action_type[:,1:].clone()
     label_feat = {k:v[:,1:].clone() for k,v in feat.items() if k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
     
-    return input_ids, input_action_type, input_feat,context_feat, label_ids, label_action_type, label_feat
+    return input_ids, input_action_type, input_feat, context_feat, label_ids, label_action_type, label_feat
 
 def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     user_id, user_feat, action_type, item_id, item_feat, context_feat = batch

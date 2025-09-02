@@ -23,7 +23,10 @@ class NegDataset(Dataset):
             neg_item_reid_list.append(i)
             neg_item_feat_list.append(MyDataset.ensure_item_feat(self.item_feat_dict[str(i)]))
             
-        return torch.as_tensor(neg_item_reid_list), MyDataset.collect_item_feat(neg_item_feat_list, to_tensor=True)
+        return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
+                                                                               include_item=True, 
+                                                                               include_context=False, 
+                                                                               include_user=False)
 
 def collate_fn(batch):
     neg_item_reid_list, neg_item_feat_list = zip(*batch)

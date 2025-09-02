@@ -64,26 +64,27 @@ class MyDataset(Dataset):
         
         delta_scaled = torch.clamp(delta_scaled, max=const.model_param.max_decay)
         out_time_feat = {
-            "201": log_gap.tolist(),
-            "202": weekdays.tolist(),
-            "203": hours.tolist(),
-            "204": months.tolist(),
-            "205": days.tolist(),
-            "206": delta_scaled.tolist()
+            "201": MyDataset.pad_seq(log_gap, const.max_seq_len, 0),
+            "202": MyDataset.pad_seq(weekdays, const.max_seq_len, 0),
+            "203": MyDataset.pad_seq(hours, const.max_seq_len, 0),
+            "204": MyDataset.pad_seq(months, const.max_seq_len, 0),
+            "205": MyDataset.pad_seq(days, const.max_seq_len, 0),
+            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len, 0)
             
         }
         return out_time_feat
+    
     @classmethod
     def ensure_user_feat(cls, feat):
         filled_feat = {}
         for feat_id in const.user_feature.all_feature_ids:
                 if feat_id not in feat.keys():
-                    filled_feat[feat_id] = const.user_feature.fill(feat_id)
+                    filled_feat[feat_id] = torch.as_tensor(const.user_feature.fill(feat_id))
                 else:
                     if feat_id in const.user_feature.array_feature_ids:
-                        filled_feat[feat_id] = const.user_feature.pad_array_feature(feat_id, feat[feat_id])
+                        filled_feat[feat_id] = torch.as_tensor(const.user_feature.pad_array_feature(feat_id, feat[feat_id]))
                     else:
-                        filled_feat[feat_id] = feat[feat_id]
+                        filled_feat[feat_id] = torch.as_tensor(feat[feat_id])
         return filled_feat
     @classmethod
     def ensure_item_feat(cls, feat):
@@ -94,36 +95,83 @@ class MyDataset(Dataset):
             else:
                 filled_feat[feat_id] = feat[feat_id]
         return filled_feat
+    
     @classmethod
-    def collect_item_feat(cls, feat_list, to_tensor=False):
-        feat = defaultdict(list)
-        for f in feat_list:
-            for i,v in f.items():
-                feat[i].append(v)
-        
-        if to_tensor:
-            out_dict = {}
-            for k, v in feat.items():
-                if k in const.item_feature.sparse_feature_ids:
-                    out_dict[k] = torch.as_tensor(v, dtype=torch.int32)
-                elif k in const.item_feature.dense_feature_ids:
-                    out_dict[k] = torch.as_tensor(v, dtype=torch.float32)
+    def fill_feature(cls, 
+                     feat,
+                     include_user=True, 
+                     include_item=True,
+                     include_context=True):
+        filled_feat = {}
+        if include_user:
+            for feat_id in const.user_feature.all_feature_ids:
+                if feat_id not in feat.keys():
+                    filled_feat[feat_id] = const.user_feature.fill(feat_id)
+                
                 else:
-                    print(f"Invalid feature id: {k}")
-            return out_dict
-        return feat
+                    if feat_id in const.user_feature.array_feature_ids:
+                        filled_feat[feat_id] = const.user_feature.pad_array_feature(feat_id, feat[feat_id])
+                    else:
+                        filled_feat[feat_id] = feat[feat_id]
+        
+        if include_item:
+            for feat_id in const.item_feature.all_feature_ids:
+                if feat_id not in feat.keys():
+                    filled_feat[feat_id] = const.item_feature.fill(feat_id)
+                else:
+                    filled_feat[feat_id] = feat[feat_id]
+                    
+        if include_context:
+            for feat_id in const.context_feature.all_feature_ids:
+                if feat_id not in feat.keys():
+                    filled_feat[feat_id] = const.context_feature.fill(feat_id)
+                else:
+                    filled_feat[feat_id] = feat[feat_id]
+        return filled_feat
+    
+    @classmethod
+    def collect_features(cls, 
+                         feat_list, 
+                         include_user=True, 
+                         include_item=True, 
+                         include_context=True
+                         ):
+        feat_list = [MyDataset.fill_feature(feat, include_user, include_item, include_context) for feat in feat_list]
+        feature_name_value_list = defaultdict(list)
+        for feat in feat_list:
+            for feat_id, feat_value in feat.items():
+                feature_name_value_list[feat_id].append(feat_value)
+        out_dict = {}
+        
+        for k, v in feature_name_value_list.items():
+            if k in const.user_feature.array_feature_ids + const.user_feature.sparse_feature_ids  + const.item_feature.sparse_feature_ids + const.context_feature.sparse_feature_ids:
+                out_dict[k] = torch.as_tensor(v, dtype=torch.int32)
+            elif k in const.user_feature.dense_feature_ids + const.item_feature.dense_feature_ids:
+                out_dict[k] = torch.as_tensor(v, dtype=torch.float32)
+            else:
+                print(f"Invalid feature id: {k}")
+                        
+        return out_dict
+    
     @classmethod
     def pad_seq(cls, seq, seq_len, pad_value):
         pad_len = seq_len - len(seq)
-        
-        if pad_len <= 0:
-            return seq[:seq_len]
-        else:
-            if len(seq) > 0 and isinstance(seq[0], list):
-                pad_value = [[pad_value] * len(seq[0]),] * pad_len
+        if isinstance(seq, list):
+            if pad_len <= 0:
+                return seq[:seq_len]
             else:
                 pad_value = [pad_value, ] * pad_len
-            return pad_value + seq
+        elif isinstance(seq, torch.Tensor):
+            if pad_len <= 0:
+                return seq[:seq_len]
+            else:
+                pad_value = torch.as_tensor([pad_value, ]* pad_len, dtype=seq.dtype)
+                return torch.cat([pad_value, seq], dim=0)
+        else:
+            raise ValueError(f"Invalid sequence type: {type(seq)}")
+        
+        return pad_value + seq
+        
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
         user_id, user_feat, ext_user_seq = self.format_user_seq(user_seq)
@@ -132,44 +180,47 @@ class MyDataset(Dataset):
         action_type_list = []
         feat_list = []
         ts_list = []
-        front_click_item = []
+        front_click_item = set()
         seq_list = []
         for i, feat, action_type, ts in ext_user_seq:
             item_id_list.append(i)
             action_type_list.append(action_type if action_type is not None else 0)
             feat_list.append(MyDataset.ensure_item_feat(feat))
-            seq_list.append(MyDataset.pad_seq(front_click_item[-const.context_feature.seq_len:].copy(), const.context_feature.seq_len, 0))
-            ts_list.append(ts)
+            
+            clicked_item_list = list(front_click_item)
+            click_seq = MyDataset.pad_seq(clicked_item_list[-const.context_feature.seq_len:].copy(), 
+                                          const.context_feature.seq_len, 
+                                          0)
+                                        
+            seq_list.append(click_seq)
+            
             if action_type == 1:
-                front_click_item.append(i)
-        
+                front_click_item.add(i)
+                
+            ts_list.append(ts)
+            
         user_feat = MyDataset.ensure_user_feat(user_feat)
+        item_id_list = MyDataset.pad_seq(item_id_list, const.max_seq_len, 0)
+        action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len, 0)
+        seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0,]*const.context_feature.seq_len)
+        feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
         
-        
-        item_feat_dict = self.collect_item_feat(feat_list)
+        item_feat_dict = MyDataset.collect_features(feat_list,
+                                                    include_item=True, 
+                                                    include_context=False, 
+                                                    include_user=False)
                 
         time_feat = self.add_time_feat(ts_list)
         context_feat = {
             ** time_feat,
-            "210": seq_list
+            "210": torch.as_tensor(seq_list, dtype=torch.int32)
         }
         
-        return user_id, user_feat, action_type_list, item_id_list, item_feat_dict, context_feat
+        return torch.as_tensor(user_id,dtype=torch.int32), user_feat,\
+            torch.as_tensor(action_type_list, dtype=torch.bool), \
+            torch.as_tensor(item_id_list, dtype=torch.int32), item_feat_dict,\
+                context_feat
 
-    def collate_fn(batch):
-        user_id_list, user_feat_list, action_type_list, item_id_list, item_feat_dict_list, context_feat_list = zip(*batch)
-        max_seq_len = max(len(c) for c in action_type_list)
-        
-        user_id = torch.as_tensor(user_id_list)
-        user_feat = {k: torch.stack([torch.as_tensor(v[k]) for v in user_feat_list]) for k in user_feat_list[0].keys()}
-        action_type = torch.stack([torch.as_tensor(MyDataset.pad_seq(a, max_seq_len, 0)) for a in action_type_list])
-        item_id = torch.stack([torch.as_tensor(MyDataset.pad_seq(a, max_seq_len, 0)) for a in item_id_list])
-        item_feat = {k: torch.stack([torch.as_tensor(MyDataset.pad_seq(v[k],max_seq_len,0)) for v in item_feat_dict_list]) for k in item_feat_dict_list[0].keys()}
-
-        context_feat = {k: torch.stack([torch.as_tensor(MyDataset.pad_seq(v[k],max_seq_len,0)) for v in context_feat_list]) for k in context_feat_list[0].keys()}
-        
-        return user_id, user_feat, action_type, item_id, item_feat, context_feat
-           
         
 class MyTestDataset(Dataset):
     def __init__(self, data_path):
@@ -242,8 +293,7 @@ class MyTestDataset(Dataset):
             
         return ext_user_sequence, user_id, ureid, ufeat
 
-    @classmethod
-    def add_time_feat(cls, ts_array):
+    def add_time_feat(self, ts_array):
         ts_tensor = torch.as_tensor(ts_array)
         time_gap = torch.diff(ts_tensor, prepend=ts_tensor[0][None])
         log_gap = torch.log1p(time_gap).int() + 1
@@ -261,66 +311,69 @@ class MyTestDataset(Dataset):
         
         delta_scaled = torch.clamp(delta_scaled, max=const.model_param.max_decay)
         out_time_feat = {
-            "201": log_gap.tolist(),
-            "202": weekdays.tolist(),
-            "203": hours.tolist(),
-            "204": months.tolist(),
-            "205": days.tolist(),
-            "206": delta_scaled.tolist()
+            "201": MyDataset.pad_seq(log_gap, const.max_seq_len, 0),
+            "202": MyDataset.pad_seq(weekdays, const.max_seq_len, 0),
+            "203": MyDataset.pad_seq(hours, const.max_seq_len, 0),
+            "204": MyDataset.pad_seq(months, const.max_seq_len, 0),
+            "205": MyDataset.pad_seq(days, const.max_seq_len, 0),
+            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len, 0)
             
         }
         return out_time_feat
+    
     def __getitem__(self, uid):
         user_sequence = self._load_user_data(uid)
         ext_user_sequence, str_user_id, user_id, user_feat = self.format_user_seq(user_sequence)
+        
         item_id_list = []
         action_type_list = []
         feat_list = []
         ts_list = []
-        front_click_item = []
+        front_click_item = set()
         seq_list = []
         for i, feat, action_type, ts in ext_user_sequence:
             item_id_list.append(i)
             action_type_list.append(action_type if action_type is not None else 0)
             feat_list.append(MyDataset.ensure_item_feat(feat))
-            seq_list.append(MyDataset.pad_seq(front_click_item[-const.context_feature.seq_len:].copy(), const.context_feature.seq_len, 0))
-            ts_list.append(ts)
+            
+            clicked_item_list = list(front_click_item)
+            click_seq = MyDataset.pad_seq(clicked_item_list[-const.context_feature.seq_len:].copy(), 
+                                          const.context_feature.seq_len, 
+                                          0)
+            seq_list.append(click_seq)
+
             if action_type == 1:
-                front_click_item.append(i)
-        user_feat = MyDataset.ensure_user_feat(user_feat)
-        
-        
-        item_feat_dict = MyDataset.collect_item_feat(feat_list)
+                front_click_item.add(i)
                 
+            ts_list.append(ts)
+            
+            
+        user_feat = MyDataset.ensure_user_feat(user_feat)
+        item_id_list = MyDataset.pad_seq(item_id_list, const.max_seq_len, 0)
+        action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len, 0)
+        seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len , [0,]*const.context_feature.seq_len)
+        feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
+        
+        item_feat_dict = MyDataset.collect_features(feat_list,
+                                                    include_item=True, 
+                                                    include_context=False, 
+                                                    include_user=False)                
         time_feat = self.add_time_feat(ts_list)
         context_feat = {
             ** time_feat,
-            "210": seq_list
+            "210": torch.as_tensor(seq_list, dtype=torch.int32)
         }
         
-        return str_user_id,user_id, user_feat, action_type_list, item_id_list, item_feat_dict, context_feat
+        return str_user_id, torch.as_tensor(user_id,dtype=torch.int32), user_feat,\
+            torch.as_tensor(action_type_list, dtype=torch.bool), \
+            torch.as_tensor(item_id_list, dtype=torch.int32), item_feat_dict,\
+                context_feat
     
-    @classmethod
-    def collate_fn(cls, batch):
-        str_user_id_list,user_id_list, user_feat_list, action_type_list, item_id_list, item_feat_dict_list, context_feat_list = zip(*batch)
-        max_seq_len = max(len(c) for c in action_type_list)
-        
-        user_id = torch.as_tensor(user_id_list)
-        user_feat = {k: torch.stack([torch.as_tensor(v[k]) for v in user_feat_list]) for k in user_feat_list[0].keys()}
-        action_type = torch.stack([torch.as_tensor(MyDataset.pad_seq(a, max_seq_len, 0)) for a in action_type_list])
-        item_id = torch.stack([torch.as_tensor(MyDataset.pad_seq(a, max_seq_len, 0)) for a in item_id_list])
-        item_feat = {k: torch.stack([torch.as_tensor(MyDataset.pad_seq(v[k],max_seq_len,0)) for v in item_feat_dict_list]) for k in item_feat_dict_list[0].keys()}
-
-        context_feat = {k: torch.stack([torch.as_tensor(MyDataset.pad_seq(v[k],max_seq_len,0)) for v in context_feat_list]) for k in context_feat_list[0].keys()}
-        return str_user_id_list, user_id, user_feat, action_type, item_id, item_feat, context_feat
-           
-        
-
 if __name__ == "__main__":
     dataset = MyDataset(data_path='/home/yeep/project/alqq_generc/data/TencentGR_1k')
-    dataloader = DataLoader(dataset, batch_size=10, shuffle=False,collate_fn=MyDataset.collate_fn)
+    dataloader = DataLoader(dataset, batch_size=10, shuffle=False)
     for d in dataloader:
-        print(d[2].shape)
+        breakpoint()
         user_id, user_feat, action_type, item_id, item_feat, context_feat = d 
 
 

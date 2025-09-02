@@ -43,7 +43,10 @@ def next_batched_item(indexer, batch_size=512):
             # Yield when we have accumulated batch_size items
             if len(item_id_list) == batch_size:
                 item_id_tensor = torch.as_tensor(item_id_list)
-                feature_tensor = MyDataset.collect_item_feat(feature_list,to_tensor=True)
+                feature_tensor = MyDataset.collect_features(feature_list, 
+                                                            include_item=True, 
+                                                            include_context=False, 
+                                                            include_user=False)
                 creative_id_tensor = torch.as_tensor(creative_id_list)
                 yield item_id_tensor, feature_tensor, creative_id_tensor
                 item_id_list.clear()
@@ -53,7 +56,10 @@ def next_batched_item(indexer, batch_size=512):
         # Yield any remaining items
         if item_id_list:
             item_id_tensor = torch.as_tensor(item_id_list)
-            feature_tensor = MyDataset.collect_item_feat(feature_list,to_tensor=True)
+            feature_tensor = MyDataset.collect_features(feature_list, 
+                                                            include_item=True, 
+                                                            include_context=False, 
+                                                            include_user=False)
             creative_id_tensor = torch.as_tensor(creative_id_list)
             yield item_id_tensor, feature_tensor, creative_id_tensor
             
@@ -69,7 +75,6 @@ def infer():
                             batch_size=4096,  # 使用正确的512 
                             num_workers=16, 
                             pin_memory=True,
-                            collate_fn=MyTestDataset.collate_fn, 
                             persistent_workers=True,  # 保持worker存活
                             prefetch_factor=4)  # 预取4个batch
     
