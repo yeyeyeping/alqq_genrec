@@ -31,7 +31,7 @@ num_epochs = 10
 warmup_t = 1000
 lr = 4e-3
 seed = 3407
-neg_sample_num = 40000
+neg_sample_num = 60000
 temperature = 0.04
 grad_norm = 1.0
 # 推理相关
