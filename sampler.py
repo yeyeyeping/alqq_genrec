@@ -23,7 +23,7 @@ class NegDataset(Dataset):
         neg_item_feat_list = []
         for i in random.sample(self.item_num, 256):
             neg_item_reid_list.append(i)
-            neg_item_feat_list.append(MyDataset.ensure_item_feat(self.item_feat_dict[str(i)]))
+            neg_item_feat_list.append(self.item_feat_dict[str(i)])
             
         return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
                                                                                include_item=True, 
@@ -31,7 +31,7 @@ class NegDataset(Dataset):
                                                                                include_user=False)
 
 class HotNegDataset(Dataset):
-    def __init__(self, data_path, hot_exp_ratio=0.2, hot_click_ratio=0.05):
+    def __init__(self, data_path, hot_exp_ratio=0.4, hot_click_ratio=0.2):
         self.data_path = Path(data_path)
         self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
         self.item_num = list(range(1, len(self.item_feat_dict) + 1))
@@ -55,7 +55,7 @@ class HotNegDataset(Dataset):
     def keep_hot_click_item(self,item_click_num):
         hot_click_item = []
         for k,v in item_click_num.items():
-            if v >= 4:
+            if v == 1:
                 hot_click_item.append(k)
         return hot_click_item
         

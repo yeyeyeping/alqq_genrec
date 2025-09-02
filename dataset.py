@@ -86,15 +86,6 @@ class MyDataset(Dataset):
                     else:
                         filled_feat[feat_id] = torch.as_tensor(feat[feat_id])
         return filled_feat
-    @classmethod
-    def ensure_item_feat(cls, feat):
-        filled_feat = {}
-        for feat_id in const.item_feature.all_feature_ids:
-            if feat_id not in feat.keys():
-                filled_feat[feat_id] = const.item_feature.fill(feat_id)
-            else:
-                filled_feat[feat_id] = feat[feat_id]
-        return filled_feat
     
     @classmethod
     def fill_feature(cls, 
@@ -185,7 +176,7 @@ class MyDataset(Dataset):
         for i, feat, action_type, ts in ext_user_seq:
             item_id_list.append(i)
             action_type_list.append(action_type if action_type is not None else 0)
-            feat_list.append(MyDataset.ensure_item_feat(feat))
+            feat_list.append(feat)
             
             clicked_item_list = list(front_click_item)
             click_seq = MyDataset.pad_seq(clicked_item_list[-const.context_feature.seq_len:].copy(), 
@@ -334,7 +325,7 @@ class MyTestDataset(Dataset):
         for i, feat, action_type, ts in ext_user_sequence:
             item_id_list.append(i)
             action_type_list.append(action_type if action_type is not None else 0)
-            feat_list.append(MyDataset.ensure_item_feat(feat))
+            feat_list.append(feat)
             
             clicked_item_list = list(front_click_item)
             click_seq = MyDataset.pad_seq(clicked_item_list[-const.context_feature.seq_len:].copy(), 

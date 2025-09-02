@@ -37,7 +37,7 @@ def next_batched_item(indexer, batch_size=512):
             feature = MyTestDataset._process_cold_start_feat(feature)
             
             item_id_list.append(item_id)
-            feature_list.append(MyDataset.ensure_item_feat(feature))
+            feature_list.append(feature)
             creative_id_list.append(creative_id)
             
             # Yield when we have accumulated batch_size items
