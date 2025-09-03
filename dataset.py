@@ -21,7 +21,7 @@ class MyDataset(Dataset):
         self.seq_file_fp = None
     
     def load_offset(self):
-        return read_pickle(self.data_path, 'seq_offsets.pkl')
+        return read_pickle(self.data_path/'seq_offsets.pkl')
         
     def __len__(self):
         return len(self.seq_offsets)
