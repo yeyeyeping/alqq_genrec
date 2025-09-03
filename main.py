@@ -190,31 +190,34 @@ if __name__ == '__main__':
             
             loss = loss.item()
             
-            log_json = json.dumps(
-                {
-                    'global_step': f"{global_step}/{total_step}", 
-                    "grad_norm":grad_norm,
-                    'loss': loss, 
-                    "sim_pos":pos_sim,
-                    "sim_neg":neg_sim,
-                    'epoch': epoch, 
-                    'lr': optimizer.param_groups[0]['lr'],
-                    'time': time.perf_counter() - st_time
-                }
-            )
-            
-            st_time = time.perf_counter()
-            
-            log_file.write(log_json + '\n')
-            log_file.flush()
-            
-            print("[TRAIN] " + log_json)
-            writer.add_scalar('train/sim_pos', pos_sim, global_step)
-            writer.add_scalar('train/sim_neg', neg_sim, global_step)
-            writer.add_scalar('train/sim_gap', pos_sim - neg_sim, global_step)
-            writer.add_scalar('train/loss', loss, global_step)
-            writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
-            writer.add_scalar('train/grad_norm', grad_norm, global_step)
+            if global_step % 10 == 0:
+                log_json = json.dumps(
+                    {
+                        'global_step': f"{global_step}/{total_step}",
+                        "grad_norm":grad_norm,
+                        'loss': loss,
+                        "sim_pos":pos_sim,
+                        "sim_neg":neg_sim,
+                        'epoch': epoch,
+                        'lr': optimizer.param_groups[0]['lr'],
+                        'time': time.perf_counter() - st_time,
+                        'gpu_mem_alloc': f"{torch.cuda.memory_allocated() / 1024**2:.2f} MB",
+                        'gpu_mem_max': f"{torch.cuda.max_memory_allocated() / 1024**2:.2f} MB",
+                    }
+                )
+                
+                st_time = time.perf_counter()
+                
+                log_file.write(log_json + '\n')
+                log_file.flush()
+                
+                print("[TRAIN] " + log_json)
+                writer.add_scalar('train/sim_pos', pos_sim, global_step)
+                writer.add_scalar('train/sim_neg', neg_sim, global_step)
+                writer.add_scalar('train/sim_gap', pos_sim - neg_sim, global_step)
+                writer.add_scalar('train/loss', loss, global_step)
+                writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
+                writer.add_scalar('train/grad_norm', grad_norm, global_step)
             global_step += 1
         save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"epoch={epoch}_global_step={global_step}.training_loss={loss:.4f}")
         save_dir.mkdir(parents=True, exist_ok=True)
