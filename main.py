@@ -1,3 +1,4 @@
+import copy
 from sampler import sample_neg
 import json
 import os
@@ -72,9 +73,15 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     # 负样本采样
     neg_id, neg_feat = next(loader)
     neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
+    
+    global hard_neg_bank_feat,hard_neg_bank_id
+    if (hard_neg_bank_id == 0).sum() == 0:
+        neg_id = torch.cat([hard_neg_bank_id, neg_id])
+        neg_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k]]) for k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
+    
+    neg_feat_ = copy.deepcopy(neg_feat)
+    
     neg_id, neg_feat = neg_id.to(const.device, non_blocking=True), to_device(neg_feat)
-    
-    
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
         
         input_ids, input_action_type, input_feat, context_feat,next_ids, next_action_type, next_feat \
@@ -87,17 +94,25 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         pos_emb = model.item_tower(next_ids, next_feat)
 
         indices = torch.where(next_ids != 1) 
-        mask = torch.isin(neg_id, item_id,)
+        mask = torch.isin(neg_id, item_id)
         
         anchor_emb = F.normalize(next_token_emb[indices[0],indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
         neg_emb = F.normalize(neg_emb[~mask], dim=-1)
         loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, return_logits=True)
-        
         loss += l2_reg_loss(model,const.l2_alpha)
+        
         with torch.no_grad():
+            prob = logits.softmax(dim=-1)
+            neg_mean_prob = prob[:,1:].mean(dim=0)
+            
+            topk_indices = torch.argsort(neg_mean_prob,descending=True)[:1000].cpu()
+            hard_neg_bank_id = torch.cat([hard_neg_bank_id, neg_id[~mask][topk_indices].cpu()])[-10000:]
+            hard_neg_bank_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat_[k][~mask.cpu()][topk_indices]])[-10000:]
+                                  for k in hard_neg_bank_feat.keys()}
+            
             top1_correct, top10_correct, entropy = compute_metrics(logits)
-    return loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy 
+    return loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,neg_id[~mask.cpu()].shape[0]
 
 def compute_metrics(logits):
     _, top1_indices = torch.topk(logits, k=1, largest=True, dim=1)
@@ -191,6 +206,13 @@ if __name__ == '__main__':
     neg_loader = iter(sample_neg())
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
+    hard_neg_bank_id = torch.zeros(10000, dtype=torch.long)
+    
+    hard_neg_bank_feat = {
+        k:torch.zeros(10000, dtype=torch.int32)
+        for k in const.item_feature.all_feature_ids
+    }
+    hard_neg_bank_feat['81'] = torch.zeros(10000, const.mm_emb_dim['81'], dtype=torch.float32)
     
     for epoch in range(1, const.num_epochs + 1):
         model.train()
@@ -199,7 +221,7 @@ if __name__ == '__main__':
             st_time = time.perf_counter()
             optimizer.zero_grad()
             
-            loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy = train_one_step(batch, emb_loader, neg_loader, model)
+            loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,num_neg = train_one_step(batch, emb_loader, neg_loader, model)
             
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
@@ -219,6 +241,7 @@ if __name__ == '__main__':
                     "entropy":entropy,
                     "sim_pos":pos_sim,
                     "sim_neg":neg_sim,
+                    "num_neg_samples":num_neg,
                     'epoch': epoch, 
                     'lr': optimizer.param_groups[0]['lr'],
                     'time': time.perf_counter() - st_time
