@@ -90,20 +90,20 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         
         input_ids, input_action_type, input_feat, context_feat,next_ids, next_action_type, next_feat \
                     = make_input_and_label(item_id, action_type, item_feat, context_feat)
-        
-        next_token_emb = model(user_id, user_feat,input_ids, input_feat, context_feat)
-        
+        next_token_emb = model(user_id, user_feat, input_ids, input_feat, context_feat)
         
         neg_emb = model.item_tower(neg_id, neg_feat)
         pos_emb = model.item_tower(next_ids, next_feat)
 
         indices = torch.where(next_ids != 1) 
         
-        anchor_emb = F.normalize(next_token_emb[indices[0],indices[1],:],dim=-1)
+        anchor_emb = F.normalize(next_token_emb[indices[0], indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
         neg_emb = F.normalize(neg_emb, dim=-1)
         loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, return_logits=True)
+        
         loss += l2_reg_loss(model,const.l2_alpha)
+        
         with torch.no_grad():
             prob = logits.softmax(dim=-1)
             neg_mean_prob = prob[:,1:].mean(dim=0)

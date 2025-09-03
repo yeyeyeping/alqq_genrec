@@ -1,3 +1,4 @@
+rm *.zip
 export TRAIN_DATA_PATH=/home/yeep/project/algo_qq/data/TencentGR_1k
 CUR=$(pwd)
 export TRAIN_TF_EVENTS_PATH=$CUR/working_dir/tensorboard
