@@ -63,7 +63,8 @@ def make_input_and_label(seq_id, action_type, feat, context_feat):
     
     return input_ids, input_action_type, input_feat, context_feat, label_ids, label_action_type, label_feat
 
-def train_one_step(batch, emb_loader, loader, model:BaselineModel,hard_neg_bank_feat,hard_neg_bank_id):
+def train_one_step(batch, emb_loader, loader, model:BaselineModel):
+    global hard_neg_bank_id, hard_neg_bank_feat
     user_id, user_feat, action_type, item_id, item_feat, context_feat = batch
     item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 1)
     # 负样本采样
@@ -80,7 +81,6 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel,hard_neg_bank_
     
     user_id = user_id.to(const.device, non_blocking=True)
     user_feat, item_feat, context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
-    
     
     if (hard_neg_bank_id == 0).sum() == 0:
         neg_id = torch.cat([hard_neg_bank_id, neg_id])
@@ -223,7 +223,7 @@ if __name__ == '__main__':
             st_time = time.perf_counter()
             optimizer.zero_grad()
             
-            loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,num_neg = train_one_step(batch, emb_loader, neg_loader, model,hard_neg_bank_feat,hard_neg_bank_id)
+            loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,num_neg = train_one_step(batch, emb_loader, neg_loader, model,)
             
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
