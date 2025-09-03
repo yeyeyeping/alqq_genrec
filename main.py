@@ -262,6 +262,7 @@ if __name__ == '__main__':
             writer.add_scalar('train/top10_correct', top10_correct, global_step)
             writer.add_scalar('train/entropy', entropy, global_step)
             writer.add_scalar('train/loss', loss, global_step)
+            writer.add_scalar("train/num_neg", num_neg, global_step)
             writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
             writer.add_scalar('train/grad_norm', grad_norm, global_step)
             global_step += 1
