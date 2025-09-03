@@ -7,6 +7,8 @@ from collections import defaultdict
 import torch
 from datetime import datetime
 import pandas as pd
+import os
+from statistical_features import get_statistical_features
 
 # from torch.utils.data._utils.collate import default_collate
 # import numpy as np
@@ -19,6 +21,10 @@ class MyDataset(Dataset):
         self.data_path = data_path
         self.seq_offsets = read_pickle(Path(data_path, 'seq_offsets.pkl'))
         self.seq_file_fp = None
+        
+        # Load statistical features
+        cache_dir = os.environ.get('CACHE_DIR', './cache')
+        self.stat_features = get_statistical_features(self.data_path, cache_dir)
     def __len__(self):
         return len(self.seq_offsets)
     
@@ -113,6 +119,18 @@ class MyDataset(Dataset):
         prev_feature_101_list = []
         prev_item_feat = {}
         # -----------------------------------------
+        
+        # --- Statistical Feature Lists Initialization ---
+        global_id_pop_100_list = []
+        global_val_pop_101_list = []
+        user_most_freq_101_list = []
+        user_cross_freq_101_102_list = []
+        # ---------------------------------------------
+        
+        # Get user-level statistical features once
+        user_id = ext_user_seq[0][0] # Assuming the first element always contains the user ID
+        user_most_freq_val_101 = self.stat_features['user_most_freq_value_101'].get(user_id, 0)
+        user_cross_freq_val = self.stat_features['user_cross_freq_101_102'].get(user_id, 0)
 
         for i, feat, token_type, action_type, ts in ext_user_seq:
             id_list.append(i)
@@ -143,6 +161,28 @@ class MyDataset(Dataset):
                 prev_item_feat = feat
             # ------------------------------
 
+            # --- Append Statistical Features ---
+            # For user tokens, we append user-level stats. For item tokens, we append item-level stats.
+            if token_type == 2: # User token
+                global_id_pop_100_list.append(0) # Not applicable for users
+                global_val_pop_101_list.append(0) # Not applicable for users
+                user_most_freq_101_list.append(user_most_freq_val_101)
+                user_cross_freq_101_102_list.append(user_cross_freq_val)
+            elif token_type == 1: # Item token
+                item_id_100 = feat.get('100', 0)
+                item_val_101 = feat.get('101', 0)
+                global_id_pop_100_list.append(self.stat_features['global_id_popularity_100'].get(item_id_100, 0))
+                global_val_pop_101_list.append(self.stat_features['global_value_popularity_101'].get(item_val_101, 0))
+                user_most_freq_101_list.append(user_most_freq_val_101) # Use the same user stat for all items in seq
+                user_cross_freq_101_102_list.append(user_cross_freq_val) # Use the same user stat for all items in seq
+            else: # Padding or other token types
+                global_id_pop_100_list.append(0)
+                global_val_pop_101_list.append(0)
+                user_most_freq_101_list.append(0)
+                user_cross_freq_101_102_list.append(0)
+            # -----------------------------------
+
+
             seq_list.append(MyDataset.pad_seq(front_click_item[-const.context_feature.seq_len:].copy(), const.context_feature.seq_len, 0))
             if token_type == 1:
                 ts_list.append(ts)
@@ -162,6 +202,13 @@ class MyDataset(Dataset):
         is_repeated_102_list = MyDataset.pad_seq(is_repeated_102_list, const.max_seq_len + 1, 0)
         prev_feature_101_list = MyDataset.pad_seq(prev_feature_101_list, const.max_seq_len + 1, 0)
         # -----------------------------
+        
+        # --- Pad Statistical Feature Lists ---
+        global_id_pop_100_list = MyDataset.pad_seq(global_id_pop_100_list, const.max_seq_len + 1, 0)
+        global_val_pop_101_list = MyDataset.pad_seq(global_val_pop_101_list, const.max_seq_len + 1, 0)
+        user_most_freq_101_list = MyDataset.pad_seq(user_most_freq_101_list, const.max_seq_len + 1, 0)
+        user_cross_freq_101_102_list = MyDataset.pad_seq(user_cross_freq_101_102_list, const.max_seq_len + 1, 0)
+        # -------------------------------------
 
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \
@@ -175,6 +222,12 @@ class MyDataset(Dataset):
                         "302": torch.as_tensor(is_repeated_102_list, dtype=torch.int32),
                         "303": torch.as_tensor(prev_feature_101_list, dtype=torch.int32),
                         # --------------------------------
+                        # --- Add Statistical Features to Dict ---
+                        "401": torch.as_tensor(global_id_pop_100_list, dtype=torch.int32),
+                        "402": torch.as_tensor(global_val_pop_101_list, dtype=torch.int32),
+                        "403": torch.as_tensor(user_most_freq_101_list, dtype=torch.int32),
+                        "404": torch.as_tensor(user_cross_freq_101_102_list, dtype=torch.int32),
+                        # ----------------------------------------
                     }
                 
 

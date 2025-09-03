@@ -76,6 +76,11 @@ class ContextFeature:
             "301", # is_repeated_101
             "302", # is_repeated_102
             "303", # prev_feature_101
+            # New statistical features
+            "401", # global_id_popularity_100
+            "402", # global_value_popularity_101
+            "403", # user_most_freq_value_101
+            "404", # user_cross_freq_101_102
         )
         self.seq_len = 10
         self.array_feature_ids = ("210", )

@@ -1,3 +1,5 @@
+import os
+import pickle
 from utils import read_pickle
 class ModelParam:
     def __init__(self,indexer_file):
@@ -13,6 +15,24 @@ class ModelParam:
         self.embedding_table_size["301"] = 3 # PAD=0, FALSE=1, TRUE=2
         self.embedding_table_size["302"] = 3 # PAD=0, FALSE=1, TRUE=2
         self.embedding_table_size["303"] = self.embedding_table_size["101"] # Vocab size is the same as feature 101
+
+        # New statistical features vocab sizes
+        # These are estimations. For a production system, these should be derived from the actual computed stats.
+        cache_dir = os.environ.get('CACHE_DIR', './cache')
+        stat_features_path = os.path.join(cache_dir, 'statistical_features.pkl')
+        if os.path.exists(stat_features_path):
+            with open(stat_features_path, 'rb') as f:
+                stat_features = pickle.load(f)
+            self.embedding_table_size["401"] = max(stat_features['global_id_popularity_100'].values()) + 1 if stat_features['global_id_popularity_100'] else 10
+            self.embedding_table_size["402"] = max(stat_features['global_value_popularity_101'].values()) + 1 if stat_features['global_value_popularity_101'] else 10
+            self.embedding_table_size["404"] = len(stat_features['cross_freq_101_102_indexer']) + 1
+        else:
+            # Provide safe defaults if the cache file doesn't exist yet
+            self.embedding_table_size["401"] = 20  # Max bucket size for global item popularity
+            self.embedding_table_size["402"] = 20  # Max bucket size for global value popularity
+            self.embedding_table_size["404"] = 50000 # Estimated vocab size for cross feature
+
+        self.embedding_table_size["403"] = self.embedding_table_size["101"] # Vocab is the same as feature 101
 
         # Semantic features from RQ-VAE codebook sizes
         self.embedding_table_size["130"] = 256
@@ -80,6 +100,12 @@ class ModelParam:
             "301": 16, # is_repeated_101
             "302": 16, # is_repeated_102
             "303": 16, # prev_feature_101
+            
+            # New statistical features embedding dimensions
+            "401": 16, # global_id_popularity_100
+            "402": 16, # global_value_popularity_101
+            "403": 16, # user_most_freq_value_101 (same as 101)
+            "404": 32, # user_cross_freq_101_102
         }
         self.user_dnn_units = 128
         self.item_dnn_units = 128
