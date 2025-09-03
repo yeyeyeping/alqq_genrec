@@ -171,12 +171,35 @@ class MyDataset(Dataset):
         action_type_list = []
         feat_list = []
         ts_list = []
+
         front_click_item = set()
         seq_list = []
+        
+        his_set_dict = {
+            k:set()
+            for k in const.item_feature.sparse_feature_ids
+        }
+        context_feat_dict = {
+            f"{int(k) + 200}":[]
+            for k in const.item_feature.sparse_feature_ids
+        }
+        
         for i, feat, action_type, ts in ext_user_seq:
             item_id_list.append(i)
             action_type_list.append(action_type if action_type is not None else 0)
             feat_list.append(feat)
+            
+            for k in const.item_feature.sparse_feature_ids:
+                key = f"{int(k) + 200}"
+                hist_cate_list = list(his_set_dict[k])
+                context_feat_dict[key].append(MyDataset.pad_seq(hist_cate_list[-const.context_feature.seq_len:], 
+                                                      const.context_feature.seq_len,
+                                                      0))
+                
+            for k in const.item_feature.sparse_feature_ids:
+                if k in feat and feat[k] is not None:
+                    his_set_dict[k].add(feat[k])
+                
             
             clicked_item_list = list(front_click_item)
             click_seq = MyDataset.pad_seq(clicked_item_list[-const.context_feature.seq_len:].copy(), 
@@ -195,7 +218,11 @@ class MyDataset(Dataset):
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len, 0)
         seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0,]*const.context_feature.seq_len)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
-        
+        context_feat_dict = {k:torch.as_tensor(MyDataset.pad_seq(v, 
+                                                                 const.max_seq_len,
+                                                                 [0,]*const.context_feature.seq_len),
+                                               dtype=torch.int32) 
+                             for k, v in context_feat_dict.items()}
         item_feat_dict = MyDataset.collect_features(feat_list,
                                                     include_item=True, 
                                                     include_context=False, 
@@ -204,9 +231,9 @@ class MyDataset(Dataset):
         time_feat = self.add_time_feat(ts_list)
         context_feat = {
             ** time_feat,
-            "210": torch.as_tensor(seq_list, dtype=torch.int32)
+            "210": torch.as_tensor(seq_list, dtype=torch.int32),
+            ** context_feat_dict
         }
-        
         return torch.as_tensor(user_id,dtype=torch.int32), user_feat,\
             torch.as_tensor(action_type_list, dtype=torch.bool), \
             torch.as_tensor(item_id_list, dtype=torch.int32), item_feat_dict,\
