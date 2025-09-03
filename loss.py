@@ -23,6 +23,6 @@ def l2_reg_loss(model,l2_alpha):
     for param in model.item_tower.sparse_emb['item_id'].parameters():
         loss += l2_alpha * torch.norm(param)
             
-        for param in model.user_tower.sparse_emb['user_id'].parameters():
-            loss += l2_alpha * torch.norm(param)
+    for param in model.user_tower.sparse_emb['user_id'].parameters():
+        loss += l2_alpha * torch.norm(param)
     return loss

@@ -63,25 +63,29 @@ def make_input_and_label(seq_id, action_type, feat, context_feat):
     
     return input_ids, input_action_type, input_feat, context_feat, label_ids, label_action_type, label_feat
 
-def train_one_step(batch, emb_loader, loader, model:BaselineModel):
+def train_one_step(batch, emb_loader, loader, model:BaselineModel,hard_neg_bank_feat,hard_neg_bank_id):
     user_id, user_feat, action_type, item_id, item_feat, context_feat = batch
     item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 1)
-
-    user_id, item_id = user_id.to(const.device, non_blocking=True), item_id.to(const.device, non_blocking=True)
-    user_feat, item_feat, context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
-    
     # 负样本采样
     neg_id, neg_feat = next(loader)
-    neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
+    neg_id, neg_feat = neg_id.to(const.device, non_blocking=True), to_device(neg_feat)
+    item_id = item_id.to(const.device, non_blocking=True)
+    # 排除包含在用户序列的负样本
+    mask = torch.isin(neg_id, item_id)
+    neg_id = neg_id[~mask]
+    neg_feat = {k:v[~mask] for k,v in neg_feat.items()}
     
-    global hard_neg_bank_feat,hard_neg_bank_id
+    neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
+    neg_feat['81'] = neg_feat['81'].to(const.device)
+    
+    user_id = user_id.to(const.device, non_blocking=True)
+    user_feat, item_feat, context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
+    
+    
     if (hard_neg_bank_id == 0).sum() == 0:
         neg_id = torch.cat([hard_neg_bank_id, neg_id])
         neg_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k]]) for k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
-    
-    neg_feat_ = copy.deepcopy(neg_feat)
-    
-    neg_id, neg_feat = neg_id.to(const.device, non_blocking=True), to_device(neg_feat)
+
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
         
         input_ids, input_action_type, input_feat, context_feat,next_ids, next_action_type, next_feat \
@@ -94,25 +98,23 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         pos_emb = model.item_tower(next_ids, next_feat)
 
         indices = torch.where(next_ids != 1) 
-        mask = torch.isin(neg_id, item_id)
         
         anchor_emb = F.normalize(next_token_emb[indices[0],indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
-        neg_emb = F.normalize(neg_emb[~mask], dim=-1)
+        neg_emb = F.normalize(neg_emb, dim=-1)
         loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, return_logits=True)
         loss += l2_reg_loss(model,const.l2_alpha)
-        
         with torch.no_grad():
             prob = logits.softmax(dim=-1)
             neg_mean_prob = prob[:,1:].mean(dim=0)
             
-            topk_indices = torch.argsort(neg_mean_prob,descending=True)[:1000].cpu()
-            hard_neg_bank_id = torch.cat([hard_neg_bank_id, neg_id[~mask][topk_indices].cpu()])[-10000:]
-            hard_neg_bank_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat_[k][~mask.cpu()][topk_indices]])[-10000:]
+            topk_indices = torch.topk(neg_mean_prob, k=1000, largest=True)[1]
+            hard_neg_bank_id = torch.cat([hard_neg_bank_id, neg_id[topk_indices]])[-10000:]
+            hard_neg_bank_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k][topk_indices]])[-10000:]
                                   for k in hard_neg_bank_feat.keys()}
             
             top1_correct, top10_correct, entropy = compute_metrics(logits)
-    return loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,neg_id[~mask.cpu()].shape[0]
+    return loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,neg_id.shape[0]
 
 def compute_metrics(logits):
     _, top1_indices = torch.topk(logits, k=1, largest=True, dim=1)
@@ -120,7 +122,7 @@ def compute_metrics(logits):
     top1_correct = torch.any(top1_indices == 0, dim=1).sum().item()
     top10_correct = torch.any(top10_indices == 0, dim=1).sum().item()
     prob = logits[top1_indices[:,0] == 0].softmax(dim=-1)
-    prob = torch.clamp(prob, min=1e-5)
+    prob = torch.clamp(prob, min=1e-4)
     entropy = -torch.sum(prob * torch.log(prob), dim=-1).mean().item()
     
     top1_correct /= logits.shape[0]
@@ -206,13 +208,13 @@ if __name__ == '__main__':
     neg_loader = iter(sample_neg())
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
-    hard_neg_bank_id = torch.zeros(10000, dtype=torch.long)
+    hard_neg_bank_id = torch.zeros(10000, dtype=torch.int32, device=const.device)
     
     hard_neg_bank_feat = {
-        k:torch.zeros(10000, dtype=torch.int32)
+        k:torch.zeros(10000, dtype=torch.int32, device=const.device)
         for k in const.item_feature.all_feature_ids
     }
-    hard_neg_bank_feat['81'] = torch.zeros(10000, const.mm_emb_dim['81'], dtype=torch.float32)
+    hard_neg_bank_feat['81'] = torch.zeros(10000, const.mm_emb_dim['81'], dtype=torch.float32, device=const.device)
     
     for epoch in range(1, const.num_epochs + 1):
         model.train()
@@ -221,7 +223,7 @@ if __name__ == '__main__':
             st_time = time.perf_counter()
             optimizer.zero_grad()
             
-            loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,num_neg = train_one_step(batch, emb_loader, neg_loader, model)
+            loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,num_neg = train_one_step(batch, emb_loader, neg_loader, model,hard_neg_bank_feat,hard_neg_bank_id)
             
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
@@ -229,6 +231,7 @@ if __name__ == '__main__':
             scaler.step(optimizer)
             scaler.update()
             scheduler.step_update(global_step)
+            
             
             loss = loss.item()
             log_json = json.dumps(
@@ -247,8 +250,6 @@ if __name__ == '__main__':
                     'time': time.perf_counter() - st_time
                 }
             )
-            
-            st_time = time.perf_counter()
             
             log_file.write(log_json + '\n')
             log_file.flush()

@@ -48,17 +48,17 @@ class UserTower(nn.Module):
         
         for feat_id in const.user_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
-            feature_dict.pop(feat_id)
+            # feature_dict.pop(feat_id)
         
         for feat_id in const.user_feature.array_feature_ids:
             emb = self.sparse_emb[feat_id](feature_dict[feat_id])
             # 对数组特征进行求和池化，注意不能除以mask.sum(-1, keepdim=True)，因为mask可能为0
             feat_emb_list.append(emb.sum(-2))
-            feature_dict.pop(feat_id)
+            # feature_dict.pop(feat_id)
         
         for feat_id in const.user_feature.dense_feature_ids:
             feat_emb_list.append(feature_dict[feat_id].unsqueeze(-1))
-            feature_dict.pop(feat_id)
+            # feature_dict.pop(feat_id)
         
         
         user_features = torch.cat(feat_emb_list, dim=-1)
@@ -117,15 +117,15 @@ class ItemTower(nn.Module):
         
         for feat_id in const.item_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
-            feature_dict.pop(feat_id)
+            # feature_dict.pop(feat_id)
         
         for feat_id in const.item_feature.dense_feature_ids:
             feat_emb_list.append(feature_dict[feat_id].unsqueeze(-1))
-            feature_dict.pop(feat_id)
+            # feature_dict.pop(feat_id)
             
         for feat_id in const.item_feature.mm_emb_feature_ids:
             feat_emb_list.append(F.dropout(self.mm_liner[feat_id](feature_dict[feat_id]), p=0.4))
-            feature_dict.pop(feat_id)
+            # feature_dict.pop(feat_id)
         item_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(item_features)
 
@@ -159,7 +159,7 @@ class ContextTower(nn.Module):
         feat_emb_list = []
         for feat_id in const.context_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
-            feature_dict.pop(feat_id)
+            # feature_dict.pop(feat_id)
 
         mask = (feature_dict['210'] != 0).long()
         user_seq_emb = torch.sum(self.item_embedding(feature_dict['210']), dim=-2)
@@ -168,7 +168,7 @@ class ContextTower(nn.Module):
                                    user_seq_emb / mask.sum(-1).unsqueeze(-1).clamp(min=1), 
                                    torch.zeros_like(user_seq_emb))
         feat_emb_list.append(user_seq_emb)
-        feature_dict.pop('210')
+        # feature_dict.pop('210')
         
         context_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(context_features)
