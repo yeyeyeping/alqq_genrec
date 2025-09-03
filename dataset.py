@@ -468,15 +468,6 @@ if __name__ == "__main__":
         # pos[token_type1[:,1:] != 1] = 0
         # print((seq1 == seq2[:, 1:]).all(),(pos == pos2[:, 1:]).all(),(token_type1[:,:-1] == token_type2[:,1:]).all())
         
-        # 测试embedding加载是否一致
-        # item_mask = (token_type1[:,:-1] == 1)
-        
-        # embeddings = emb_loader.batch_load_emb((seq1 * (item_mask == 1)).reshape(-1).tolist())
-        # embeddings2 = torch.as_tensor(np.array([i['81'] for seq in seq_feat for i in seq[1:]]))
-        # for i,(e1, e2) in enumerate(zip(embeddings, embeddings2)):
-        #     if (e1 != e2).any():
-        #         breakpoint()
-        # print((embeddings == embeddings2).all())
         
         
         # 测试采样策略

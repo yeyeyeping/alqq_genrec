@@ -84,6 +84,8 @@ class ItemTower(nn.Module):
     def build_mm_liner(self,):
         mm_liner = nn.ModuleDict()
         for feat_id in const.item_feature.mm_emb_feature_ids:
+            if feat_id == '81':
+                continue
             mm_liner[feat_id] = nn.Linear(const.mm_emb_dim[feat_id], const.model_param.embedding_dim[feat_id])
         return mm_liner
             
@@ -101,6 +103,8 @@ class ItemTower(nn.Module):
         # Add dimensions for dense and mm features
         num += len(const.item_feature.dense_feature_ids)
         for feat_id in const.item_feature.mm_emb_feature_ids:
+            if feat_id == '81':
+                continue
             num += const.model_param.embedding_dim[feat_id]
             print(f"{feat_id} : {num}",end=", ")
         print(f"dense : {num}")
@@ -140,9 +144,10 @@ class ItemTower(nn.Module):
             
         # 4. Process multi-modal features
         for feat_id in const.item_feature.mm_emb_feature_ids:
-            if feat_id in feature_dict:
-                feat_emb_list.append(F.dropout(self.mm_liner[feat_id](feature_dict[feat_id]), p=0.4))
-                feature_dict.pop(feat_id)
+            if feat_id == '81':
+                continue
+            feat_emb_list.append(F.dropout(self.mm_liner[feat_id](feature_dict[feat_id]), p=0.4))
+            feature_dict.pop(feat_id)
         
         item_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(item_features)

@@ -15,8 +15,6 @@ from timm.scheduler import CosineLRScheduler
 from torch.nn import functional as F
 from utils import seed_everything, seed_worker
 from loss import info_nce_loss,l2_reg_loss
-from mm_emb_loader import Memorymm81Embloader
-from semantic_loader import SemanticLoader
 from torch.optim import SGD
 def build_dataloader(dataset, batch_size, num_workers, shuffle):
     return DataLoader(
@@ -64,16 +62,13 @@ def make_input_and_label(seq_id, token_type, action_type, feat):
     label_feat = {k:v[:,1:].clone() for k,v in feat.items() if k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
     return input_ids, input_token_type, input_action_type, input_feat, label_ids, label_token_type, label_action_type, label_feat
 
-def train_one_step(batch, emb_loader, semantic_loader, loader, model:BaselineModel):
+def train_one_step(batch, loader, model:BaselineModel):
     seq_id, token_type, action_type, feat = batch
-    feat = emb_loader.add_mm_emb(seq_id, feat, token_type == 1)
-    feat = semantic_loader.add_semantic_features_to_batch(seq_id, feat)
+    # feat = emb_loader.add_mm_emb(seq_id, feat, token_type == 1)
 
     # 负样本采样
     neg_id, neg_feat = next(loader)
-    neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
-    neg_feat = semantic_loader.add_semantic_features_to_batch(neg_id, neg_feat)
-    
+    # neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
     seq_id, token_type, action_type, feat = \
                 seq_id.to(const.device,non_blocking=True), \
                 token_type.to(const.device,non_blocking=True), \
@@ -98,16 +93,13 @@ def train_one_step(batch, emb_loader, semantic_loader, loader, model:BaselineMod
     return loss, neg_sim, pos_sim
 
 @torch.no_grad()
-def valid_one_step(batch, emb_loader, semantic_loader, loader, model:BaselineModel):
+def valid_one_step(batch, loader, model:BaselineModel):
     seq_id, token_type, action_type, feat = batch
-    feat = emb_loader.add_mm_emb(seq_id, feat, token_type == 1)
-    feat = semantic_loader.add_semantic_features_to_batch(seq_id, feat)
+    # feat = emb_loader.add_mm_emb(seq_id, feat, token_type == 1)
 
     # 负样本采样
     neg_id, neg_feat = next(loader)
-    neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
-    neg_feat = semantic_loader.add_semantic_features_to_batch(neg_id, neg_feat)
-
+    # neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
     seq_id, token_type, action_type, feat = \
                 seq_id.to(const.device,non_blocking=True), \
                 token_type.to(const.device,non_blocking=True), \
@@ -177,9 +169,7 @@ if __name__ == '__main__':
     global_step = 0
     total_step = const.num_epochs * len(train_loader)
     neg_loader = iter(sample_neg())
-    emb_loader = Memorymm81Embloader(const.data_path)
-    semantic_json_path = Path(os.environ.get('USER_CACHE_PATH')) / '20250828_075518/semantic_id_map.json'
-    semantic_loader = SemanticLoader(const.data_path, semantic_json_path)
+    # emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
     
     for epoch in range(1, const.num_epochs + 1):
@@ -189,7 +179,7 @@ if __name__ == '__main__':
             st_time = time.perf_counter()
             optimizer.zero_grad()
             
-            loss, neg_sim, pos_sim = train_one_step(batch, emb_loader, semantic_loader, neg_loader, model)
+            loss, neg_sim, pos_sim = train_one_step(batch, neg_loader, model)
             
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
