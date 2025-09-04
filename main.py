@@ -82,12 +82,7 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     user_id = user_id.to(const.device, non_blocking=True)
     user_feat, item_feat, context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
     
-    if (hard_neg_bank_id == 0).sum() == 0:
-        neg_id = torch.cat([hard_neg_bank_id, neg_id])
-        neg_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k]]) for k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
-
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
-        
         input_ids, input_action_type, input_feat, context_feat,next_ids, next_action_type, next_feat \
                     = make_input_and_label(item_id, action_type, item_feat, context_feat)
         next_token_emb = model(user_id, user_feat, input_ids, input_feat, context_feat)
@@ -105,14 +100,6 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         loss += l2_reg_loss(model,const.l2_alpha)
         
         with torch.no_grad():
-            # prob = logits.softmax(dim=-1)
-            # neg_mean_prob = prob[:,1:].mean(dim=0)
-            
-            # topk_indices = torch.topk(neg_mean_prob, k=1000, largest=True)[1]
-            # hard_neg_bank_id = torch.cat([hard_neg_bank_id, neg_id[topk_indices]])[-10000:]
-            # hard_neg_bank_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k][topk_indices]])[-10000:]
-            #                       for k in hard_neg_bank_feat.keys()}
-            
             top1_correct, top10_correct, entropy = compute_metrics(logits)
     return loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,neg_id.shape[0]
 
@@ -181,10 +168,7 @@ if __name__ == '__main__':
     seed_everything(const.seed)
     
     dataset = MyDataset(const.data_path)
-    # train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
     train_loader = build_dataloader(dataset, const.batch_size, const.num_workers, True)
-    # valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)
-    
     
     model = BaselineModel().to(const.device)
     print(model)
