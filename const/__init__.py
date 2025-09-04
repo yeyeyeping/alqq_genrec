@@ -24,16 +24,16 @@ mm_emb_dim = {
 }
 max_seq_len = 101
 # 训练相关
-l2_alpha = 1e-7
-device = "cpu"
+l2_alpha = 1e-5
+device = "cuda"
 batch_size = 128
 num_workers = 8
 num_epochs = 10
 warmup_t = 2000
-lr = 2e-3
+lr = 3e-4
 seed = 3407
 neg_sample_num = 30000
-temperature = 0.04
+temperature = 0.07
 grad_norm = 1.0
 # 推理相关
 infer_batch_size = 512

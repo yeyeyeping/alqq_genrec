@@ -110,9 +110,9 @@ class ModelParam:
         self.user_dnn_units = 128
         self.item_dnn_units = 128
         self.context_dnn_units = 128
-        self.dropout = 0.3
+        self.dropout = 0.2
         self.hidden_units = 256
-        self.num_blocks = 12
+        self.num_blocks = 8
         self.num_heads = 8
         self.norm_first = True
         
