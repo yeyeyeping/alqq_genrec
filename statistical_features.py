@@ -1,10 +1,8 @@
-
 import os
 import pickle
 from collections import Counter, defaultdict
 import json
 from pathlib import Path
-from tqdm import tqdm
 import numpy as np
 
 def get_statistical_features(data_dir: str, cache_dir: str):
@@ -43,43 +41,29 @@ def get_statistical_features(data_dir: str, cache_dir: str):
     global_id_popularity_100 = Counter()
     global_value_popularity_101 = Counter()
 
-    # User-specific history
-    user_history = defaultdict(list)
-
-    seq_file = Path(data_dir) / 'seq.jsonl'
-    with open(seq_file, 'r') as f:
-        for line in tqdm(f, desc="Reading sequence data"):
-            user_seq = json.loads(line)
-            if not user_seq:
-                continue
-            
-            user_id = user_seq[0][0]
-            
-            for record in user_seq:
-                u, i, user_feat, item_feat, action_type, ts = record
-                if i and item_feat: # Process only item interactions
-                    item_id_100 = item_feat.get('100')
-                    item_val_101 = item_feat.get('101')
-                    
-                    if item_id_100 is not None:
-                        global_id_popularity_100[item_id_100] += 1
-                    
-                    if item_val_101 is not None:
-                        global_value_popularity_101[item_val_101] += 1
-                    
-                    user_history[user_id].append(item_feat)
-
-    # User tower feature calculation
+    # User-specific features
     user_most_freq_value_101 = {}
     user_value_dist_101 = {}
     user_cross_freq_101_102 = {}
 
-    for user_id, items in tqdm(user_history.items(), desc="Calculating user features"):
-        # Calculate user_most_freq_value_101
+    # Temporary storage for a single user's history
+    current_user_id = None
+    user_item_history = []
+    line_count = 0
+
+    seq_file = Path(data_dir) / 'seq.jsonl'
+
+    def process_user_history(user_id, items):
+        """Helper function to process features for a single user."""
+        if not items:
+            return
+
+        # Calculate user_most_freq_value_101 and user_value_dist_101
         values_101 = [item.get('101') for item in items if item.get('101') is not None]
         if values_101:
-            user_most_freq_value_101[user_id] = Counter(values_101).most_common(1)[0][0]
-            user_value_dist_101[user_id] = dict(Counter(values_101))
+            counter_101 = Counter(values_101)
+            user_most_freq_value_101[user_id] = counter_101.most_common(1)[0][0]
+            user_value_dist_101[user_id] = dict(counter_101)
 
         # Calculate user_cross_freq_101_102
         cross_values = []
@@ -91,6 +75,46 @@ def get_statistical_features(data_dir: str, cache_dir: str):
         
         if cross_values:
             user_cross_freq_101_102[user_id] = Counter(cross_values).most_common(1)[0][0]
+
+    with open(seq_file, 'r') as f:
+        for line in f:
+            line_count += 1
+            if line_count % 100000 == 0:
+                print(f"Processed {line_count} lines...")
+
+            user_seq = json.loads(line)
+            if not user_seq:
+                continue
+            
+            # Assuming user_id is consistent within a single line (user_seq)
+            user_id = user_seq[0][0]
+
+            # If user changes, process the history of the previous user
+            if current_user_id is not None and user_id != current_user_id:
+                process_user_history(current_user_id, user_item_history)
+                user_item_history = []
+
+            current_user_id = user_id
+            
+            for record in user_seq:
+                u, i, user_feat, item_feat, action_type, ts = record
+                if i and item_feat:  # Process only item interactions
+                    item_id_100 = item_feat.get('100')
+                    item_val_101 = item_feat.get('101')
+                    
+                    if item_id_100 is not None:
+                        global_id_popularity_100[item_id_100] += 1
+                    
+                    if item_val_101 is not None:
+                        global_value_popularity_101[item_val_101] += 1
+                    
+                    user_item_history.append(item_feat)
+
+    # Process the last user's history after the loop finishes
+    if current_user_id is not None and user_item_history:
+        process_user_history(current_user_id, user_item_history)
+
+    print("Finished processing all lines.")
 
     # --- Feature Post-processing and Indexing ---
     
@@ -144,12 +168,12 @@ if __name__ == '__main__':
                 [1, 10, {}, {'100': 10, '101': 1, '102': 1}, 1, 1000],
                 [1, 11, {}, {'100': 11, '101': 1, '102': 2}, 1, 1001],
                 [1, 12, {}, {'100': 12, '101': 2, '102': 1}, 1, 1002],
-            ]) + '\\n')
+            ]) + '\n')
             # user 2
             f.write(json.dumps([
                 [2, 10, {}, {'100': 10, '101': 1, '102': 2}, 1, 1003],
                 [2, 13, {}, {'100': 13, '101': 3, '102': 1}, 1, 1004],
-            ]) + '\\n')
+            ]) + '\n')
 
 
     features = get_statistical_features(data_directory, cache_directory)

@@ -53,6 +53,18 @@ class UserTower(nn.Module):
         
         for feat_id in const.user_feature.array_feature_ids:
             if feat_id in feature_dict:
+                # --- 调试代码：检查索引是否越界 ---
+                input_tensor = feature_dict[feat_id]
+                embedding_layer = self.sparse_emb[feat_id]
+                vocab_size = embedding_layer.num_embeddings
+                max_index = input_tensor.max()
+                if max_index >= vocab_size:
+                    raise RuntimeError(
+                        f"索引越界错误: 特征 '{feat_id}' 的输入中包含的最大索引 "
+                        f"({max_index}) 大于或等于词表大小 ({vocab_size}). "
+                        f"请检查数据预处理过程，确保所有特征ID都在有效范围内。"
+                    )
+                # --- 调试代码结束 ---
                 emb = self.sparse_emb[feat_id](feature_dict[feat_id])
                 # 对数组特征进行求和池化，注意不能除以mask.sum(-1, keepdim=True)，因为mask可能为0
                 feat_emb_list.append(emb.sum(-2))

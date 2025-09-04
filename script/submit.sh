@@ -9,6 +9,8 @@ cp main.py submit/
 cp mm_emb_loader.py submit/
 cp sampler.py submit/
 cp utils.py submit/
+cp statistical_features.py submit/
+cp semantic_loader.py submit/
 
 zip -r submit.zip submit
 
