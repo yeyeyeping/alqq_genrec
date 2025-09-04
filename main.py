@@ -82,9 +82,9 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     user_id = user_id.to(const.device, non_blocking=True)
     user_feat, item_feat, context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
     
-    if (hard_neg_bank_id == 0).sum() == 0:
-        neg_id = torch.cat([hard_neg_bank_id, neg_id])
-        neg_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k]]) for k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
+    # if (hard_neg_bank_id == 0).sum() == 0:
+    #     neg_id = torch.cat([hard_neg_bank_id, neg_id])
+    #     neg_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k]]) for k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
 
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
         
@@ -208,13 +208,13 @@ if __name__ == '__main__':
     neg_loader = iter(sample_neg())
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
-    # hard_neg_bank_id = torch.zeros(10000, dtype=torch.int32, device=const.device)
+    hard_neg_bank_id = torch.zeros(10000, dtype=torch.int32, device=const.device)
     
-    # hard_neg_bank_feat = {
-    #     k:torch.zeros(10000, dtype=torch.int32, device=const.device)
-    #     for k in const.item_feature.all_feature_ids
-    # }
-    # hard_neg_bank_feat['81'] = torch.zeros(10000, const.mm_emb_dim['81'], dtype=torch.float32, device=const.device)
+    hard_neg_bank_feat = {
+        k:torch.zeros(10000, dtype=torch.int32, device=const.device)
+        for k in const.item_feature.all_feature_ids
+    }
+    hard_neg_bank_feat['81'] = torch.zeros(10000, const.mm_emb_dim['81'], dtype=torch.float32, device=const.device)
     
     for epoch in range(1, const.num_epochs + 1):
         model.train()
