@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 import const
 import torch
+import random
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import gc
@@ -51,19 +52,19 @@ def to_device(batch):
             batch[k] = v.to(const.device, non_blocking=True)
     return batch
 
-def make_input_and_label(seq_id, action_type, feat, context_feat):
-    input_ids = seq_id[:,:-1]
-    input_action_type = action_type[:,:-1]
-    input_feat = {k:v[:,:-1] for k,v in feat.items()}
-    context_feat = {k:v[:,:-1] for k,v in context_feat.items()}
+def make_input_and_label(seq_id, action_type, feat, context_feat,shift=1):
+    input_ids = seq_id[:,:-shift]
+    input_action_type = action_type[:,:-shift]
+    input_feat = {k:v[:,:-shift] for k,v in feat.items()}
+    context_feat = {k:v[:,:-shift] for k,v in context_feat.items()}
     
-    label_ids = seq_id[:,1:].clone()
-    label_action_type = action_type[:,1:].clone()
-    label_feat = {k:v[:,1:].clone() for k,v in feat.items() if k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
+    label_ids = seq_id[:,shift:].clone()
+    label_action_type = action_type[:,shift:].clone()
+    label_feat = {k:v[:,shift:].clone() for k,v in feat.items() if k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
     
     return input_ids, input_action_type, input_feat, context_feat, label_ids, label_action_type, label_feat
 
-def train_one_step(batch, emb_loader, loader, model:BaselineModel):
+def train_one_step(epoch, batch, emb_loader, loader, model:BaselineModel):
     # global hard_neg_bank_id, hard_neg_bank_feat
     user_id, user_feat, action_type, item_id, item_feat, context_feat = batch
     item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 1)
@@ -87,7 +88,10 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     #     neg_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k]]) for k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
 
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
-        
+        if epoch < 5:
+            shift = 1
+        else:
+            shift = random.randint(1, 5)
         input_ids, input_action_type, input_feat, context_feat,next_ids, next_action_type, next_feat \
                     = make_input_and_label(item_id, action_type, item_feat, context_feat)
         next_token_emb = model(user_id, user_feat, input_ids, input_feat, context_feat)
@@ -223,7 +227,7 @@ if __name__ == '__main__':
             st_time = time.perf_counter()
             optimizer.zero_grad()
             
-            loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,num_neg = train_one_step(batch, emb_loader, neg_loader, model,)
+            loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,num_neg = train_one_step(epoch,batch, emb_loader, neg_loader, model,)
             
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
