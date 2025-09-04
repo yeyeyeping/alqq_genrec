@@ -4,7 +4,6 @@ import pickle
 from collections import Counter, defaultdict
 import json
 from pathlib import Path
-from tqdm import tqdm
 import numpy as np
 
 def get_statistical_features(data_dir: str, cache_dir: str):
@@ -39,25 +38,30 @@ def get_statistical_features(data_dir: str, cache_dir: str):
 
     print("Calculating statistical features...")
     
-    # Global stats
+    # Initialize feature dictionaries
     global_id_popularity_100 = Counter()
     global_value_popularity_101 = Counter()
-
-    # User-specific history
-    user_history = defaultdict(list)
+    user_most_freq_value_101 = {}
+    user_value_dist_101 = {}
+    user_cross_freq_101_102 = {}
 
     seq_file = Path(data_dir) / 'seq.jsonl'
+    print("Starting to process user sequences...")
     with open(seq_file, 'r') as f:
-        for line in tqdm(f, desc="Reading sequence data"):
+        for i, line in enumerate(f, 1):
+            if i % 10000 == 0:
+                print(f"  ... processed {i} users")
             user_seq = json.loads(line)
             if not user_seq:
                 continue
             
             user_id = user_seq[0][0]
+            items_for_current_user = []
             
+            # Pass 1: Collect items for the current user and update global stats
             for record in user_seq:
                 u, i, user_feat, item_feat, action_type, ts = record
-                if i and item_feat: # Process only item interactions
+                if i and item_feat:  # Process only item interactions
                     item_id_100 = item_feat.get('100')
                     item_val_101 = item_feat.get('101')
                     
@@ -67,30 +71,28 @@ def get_statistical_features(data_dir: str, cache_dir: str):
                     if item_val_101 is not None:
                         global_value_popularity_101[item_val_101] += 1
                     
-                    user_history[user_id].append(item_feat)
+                    items_for_current_user.append(item_feat)
+            
+            if not items_for_current_user:
+                continue
 
-    # User tower feature calculation
-    user_most_freq_value_101 = {}
-    user_value_dist_101 = {}
-    user_cross_freq_101_102 = {}
+            # Pass 2: Calculate user-specific features for the current user
+            # Calculate user_most_freq_value_101 and user_value_dist_101
+            values_101 = [item.get('101') for item in items_for_current_user if item.get('101') is not None]
+            if values_101:
+                user_most_freq_value_101[user_id] = Counter(values_101).most_common(1)[0][0]
+                user_value_dist_101[user_id] = dict(Counter(values_101))
 
-    for user_id, items in tqdm(user_history.items(), desc="Calculating user features"):
-        # Calculate user_most_freq_value_101
-        values_101 = [item.get('101') for item in items if item.get('101') is not None]
-        if values_101:
-            user_most_freq_value_101[user_id] = Counter(values_101).most_common(1)[0][0]
-            user_value_dist_101[user_id] = dict(Counter(values_101))
-
-        # Calculate user_cross_freq_101_102
-        cross_values = []
-        for item in items:
-            val_101 = item.get('101')
-            val_102 = item.get('102')
-            if val_101 is not None and val_102 is not None:
-                cross_values.append(f"{val_101}_{val_102}")
-        
-        if cross_values:
-            user_cross_freq_101_102[user_id] = Counter(cross_values).most_common(1)[0][0]
+            # Calculate user_cross_freq_101_102
+            cross_values = []
+            for item in items_for_current_user:
+                val_101 = item.get('101')
+                val_102 = item.get('102')
+                if val_101 is not None and val_102 is not None:
+                    cross_values.append(f"{val_101}_{val_102}")
+            
+            if cross_values:
+                user_cross_freq_101_102[user_id] = Counter(cross_values).most_common(1)[0][0]
 
     # --- Feature Post-processing and Indexing ---
     

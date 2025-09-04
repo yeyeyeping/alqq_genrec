@@ -5,156 +5,175 @@ import const
 from torch import nn
 from .atten import AttentionDecoder
 
-class UserTower(nn.Module):
-    def __init__(self):
+class BaseTower(nn.Module):
+    """
+    A base class for feature towers (UserTower, ItemTower).
+    It handles the common logic for creating embedding layers and calculating feature dimensions.
+    """
+    def __init__(self, main_id_name, feature_config, model_param):
         super().__init__()
+        self.main_id_name = main_id_name
+        self.sparse_feature_ids = feature_config.sparse_feature_ids
+        self.array_feature_ids = getattr(feature_config, 'array_feature_ids', [])
+        self.dense_feature_ids = feature_config.dense_feature_ids
+        self.model_param = model_param
+        
         self.sparse_emb = self.setup_embedding_layer()
 
+    def setup_embedding_layer(self):
+        """Initializes embedding layers for all sparse and array features."""
+        emb_dict = nn.ModuleDict()
+        
+        # Main ID embedding
+        emb_dict[self.main_id_name] = nn.Embedding(
+            self.model_param.embedding_table_size[self.main_id_name] + 1, 
+            self.model_param.embedding_dim[self.main_id_name], 
+            padding_idx=0
+        )
+        
+        # Other sparse and array feature embeddings
+        for feat_id in list(self.sparse_feature_ids) + list(self.array_feature_ids):
+            emb_dict[feat_id] = nn.Embedding(
+                self.model_param.embedding_table_size[feat_id] + 1, 
+                self.model_param.embedding_dim[feat_id], 
+                padding_idx=0
+            )
+        return emb_dict
+
+    def get_feature_dim(self):
+        """Calculates the total dimension of the concatenated features."""
+        dim = self.model_param.embedding_dim[self.main_id_name]
+        for feat_id in self.sparse_feature_ids:
+            dim += self.model_param.embedding_dim[feat_id]
+        for feat_id in self.array_feature_ids:
+            # For array features, we use sum pooling, so the dimension is the same as embedding dim
+            dim += self.model_param.embedding_dim[feat_id]
+        dim += len(self.dense_feature_ids)
+        return dim
+
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError("Each tower must implement its own forward pass.")
+
+
+class UserTower(BaseTower):
+    """User Tower for processing user features."""
+    def __init__(self):
+        super().__init__('user_id', const.user_feature, const.model_param)
         self.dnn = nn.Sequential(
             nn.Linear(self.get_user_feature_dim(), const.model_param.user_dnn_units),
             nn.ReLU(),
-            # nn.LayerNorm(const.model_param.user_dnn_units),
-            # nn.Dropout(const.model_param.dropout),
             nn.Linear(const.model_param.user_dnn_units, const.model_param.hidden_units),
         )
         
     def get_user_feature_dim(self):
-        print("user feature dim: ")
-        num = const.model_param.embedding_dim['user_id']
-        print(f"user_id : {num}",end=", ")
-        for feat_id in const.user_feature.sparse_feature_ids + const.user_feature.array_feature_ids:
-            num += const.model_param.embedding_dim[feat_id]
-            print(f"{feat_id} : {num}",end=", ")
-        num += len(const.user_feature.dense_feature_ids)
-        print(f"dense : {num}")
+        """Calculates the total dimension for user features."""
+        num = self.model_param.embedding_dim['user_id']
+        for feat_id in self.sparse_feature_ids + self.array_feature_ids:
+            num += self.model_param.embedding_dim[feat_id]
+        num += len(self.dense_feature_ids)
         return num
-    
-    def setup_embedding_layer(self):
-        emb_dict = nn.ModuleDict()
-        emb_dict['user_id'] = nn.Embedding(const.model_param.embedding_table_size['user_id'] + 1, 
-                                                    const.model_param.embedding_dim['user_id'], padding_idx=0)
-        
-        for feat_id in const.user_feature.sparse_feature_ids + const.user_feature.array_feature_ids:
-            emb_dict[feat_id] = nn.Embedding(const.model_param.embedding_table_size[feat_id] + 1, 
-                                                    const.model_param.embedding_dim[feat_id], padding_idx=0)
-        return emb_dict
-
         
     def forward(self, seq_id, user_mask, feature_dict):
-        id_embedding = self.sparse_emb['user_id'](seq_id * user_mask)
+        """Forward pass for UserTower."""
+        # Get embedding and then apply mask to zero out padded positions.
+        id_embedding = self.sparse_emb['user_id'](seq_id) * user_mask.unsqueeze(-1)
         
-        feat_emb_list = [id_embedding, ]
+        feat_emb_list = [id_embedding]
         
-        
-        for feat_id in const.user_feature.sparse_feature_ids:
+        for feat_id in self.sparse_feature_ids:
             if feat_id in feature_dict:
                 feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
                 feature_dict.pop(feat_id)
         
-        for feat_id in const.user_feature.array_feature_ids:
+        for feat_id in self.array_feature_ids:
             if feat_id in feature_dict:
                 emb = self.sparse_emb[feat_id](feature_dict[feat_id])
-                # 对数组特征进行求和池化，注意不能除以mask.sum(-1, keepdim=True)，因为mask可能为0
+                # Sum pooling for array features.
                 feat_emb_list.append(emb.sum(-2))
                 feature_dict.pop(feat_id)
         
-        for feat_id in const.user_feature.dense_feature_ids:
+        for feat_id in self.dense_feature_ids:
             if feat_id in feature_dict:
                 feat_emb_list.append(feature_dict[feat_id].unsqueeze(-1))
                 feature_dict.pop(feat_id)
         
-        
         user_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(user_features)
-            
 
-class ItemTower(nn.Module):
+
+class ItemTower(BaseTower):
+    """Item Tower for processing item features."""
     def __init__(self):
-        super().__init__()
-        self.sparse_emb = self.setup_embedding_layer()
+        super().__init__('item_id', const.item_feature, const.model_param)
+        
+        self.mm_emb_feature_ids = const.item_feature.mm_emb_feature_ids
+        # A config to skip certain mm features if needed.
+        self.skip_mm_feats = getattr(const.model_param, 'skip_mm_feats', [])
+
         self.dnn = nn.Sequential(
             nn.Linear(self.get_item_feature_dim(), const.model_param.item_dnn_units),
             nn.ReLU(),
-            # nn.LayerNorm(const.model_param.item_dnn_units),
-            # nn.Dropout(const.model_param.dropout),
             nn.Linear(const.model_param.item_dnn_units, const.model_param.hidden_units),
         )
         self.mm_liner = self.build_mm_liner()
         
-    def build_mm_liner(self,):
+    def build_mm_liner(self):
+        """Builds linear layers for multi-modal features."""
         mm_liner = nn.ModuleDict()
-        for feat_id in const.item_feature.mm_emb_feature_ids:
-            if feat_id == '81':
+        for feat_id in self.mm_emb_feature_ids:
+            if feat_id in self.skip_mm_feats:
                 continue
-            mm_liner[feat_id] = nn.Linear(const.mm_emb_dim[feat_id], const.model_param.embedding_dim[feat_id])
+            # This assumes mm_emb_dim and embedding_dim for these features are in const
+            mm_liner[feat_id] = nn.Linear(const.mm_emb_dim[feat_id], self.model_param.embedding_dim[feat_id])
         return mm_liner
             
     def get_item_feature_dim(self):
-        print("item feature dim: ")
-        # Start with the main item_id embedding dimension
-        num = const.model_param.embedding_dim['item_id']
-        print(f"item_id : {num}",end=", ")
-
-        # Add dimensions for all auxiliary sparse features
-        for feat_id in const.item_feature.sparse_feature_ids:
-            num += const.model_param.embedding_dim[feat_id]
-            print(f"{feat_id} : {num}",end=", ")
+        """Calculates the total dimension for item features."""
+        num = self.model_param.embedding_dim['item_id']
+        for feat_id in self.sparse_feature_ids:
+            num += self.model_param.embedding_dim[feat_id]
         
-        # Add dimensions for dense and mm features
-        num += len(const.item_feature.dense_feature_ids)
-        for feat_id in const.item_feature.mm_emb_feature_ids:
-            if feat_id == '81':
+        num += len(self.dense_feature_ids)
+        for feat_id in self.mm_emb_feature_ids:
+            if feat_id in self.skip_mm_feats:
                 continue
-            num += const.model_param.embedding_dim[feat_id]
-            print(f"{feat_id} : {num}",end=", ")
-        print(f"dense : {num}")
+            num += self.model_param.embedding_dim[feat_id]
         return num
-    
-    def setup_embedding_layer(self):
-        emb_dict = nn.ModuleDict()
-        # Create the main item_id embedding layer
-        emb_dict['item_id'] = nn.Embedding(const.model_param.embedding_table_size['item_id'] + 1, 
-                                                    const.model_param.embedding_dim['item_id'], 
-                                                    padding_idx=0)
-        
-        # Create embedding layers for all auxiliary sparse features
-        for feat_id in const.item_feature.sparse_feature_ids:
-            emb_dict[feat_id] = nn.Embedding(const.model_param.embedding_table_size[feat_id] + 1, 
-                                                    const.model_param.embedding_dim[feat_id], 
-                                                    padding_idx=0 )
-        return emb_dict
         
     def forward(self, seq_id, item_mask, feature_dict):
-        # 1. Get embedding for the main item ID from seq_id
-        id_embedding = self.sparse_emb['item_id'](seq_id * item_mask)
+        """Forward pass for ItemTower."""
+        # Get embedding and then apply mask to zero out padded positions.
+        id_embedding = self.sparse_emb['item_id'](seq_id) * item_mask.unsqueeze(-1)
         
-        feat_emb_list = [id_embedding, ]
+        feat_emb_list = [id_embedding]
         
-        # 2. Get embeddings for all auxiliary sparse features from feature_dict
-        for feat_id in const.item_feature.sparse_feature_ids:
+        for feat_id in self.sparse_feature_ids:
             if feat_id in feature_dict:
                 feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
                 feature_dict.pop(feat_id)
         
-        # 3. Process dense features
-        for feat_id in const.item_feature.dense_feature_ids:
+        for feat_id in self.dense_feature_ids:
             if feat_id in feature_dict:
                 feat_emb_list.append(feature_dict[feat_id].unsqueeze(-1))
                 feature_dict.pop(feat_id)
             
-        # 4. Process multi-modal features
-        for feat_id in const.item_feature.mm_emb_feature_ids:
-            if feat_id == '81':
+        for feat_id in self.mm_emb_feature_ids:
+            if feat_id in self.skip_mm_feats:
                 continue
-            feat_emb_list.append(F.dropout(self.mm_liner[feat_id](feature_dict[feat_id]), p=0.4))
+            # Use dropout from model_param
+            feat_emb_list.append(F.dropout(self.mm_liner[feat_id](feature_dict[feat_id]), p=self.model_param.dropout))
             feature_dict.pop(feat_id)
         
         item_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(item_features)
 
 class ContextTower(nn.Module):
+    """Context Tower for processing contextual features, including user history."""
     def __init__(self, item_embedding):
         super().__init__()
+        self.sparse_feature_ids = const.context_feature.sparse_feature_ids
+        self.user_history_feature_id = const.context_feature.array_feature_ids[0] # Assumes '210' is the first and only one
+
         self.sparse_emb = self.setup_embedding_layer()
         self.dnn = nn.Sequential(
             nn.Linear(self.get_context_feature_dim(), const.model_param.context_dnn_units),
@@ -164,59 +183,63 @@ class ContextTower(nn.Module):
         self.item_embedding = item_embedding
         
     def get_context_feature_dim(self):
+        """Calculates the total dimension for context features."""
         dim = 0
-        # Add dimensions for all sparse context features defined in const/feature.py
-        for feat_id in const.context_feature.sparse_feature_ids:
+        for feat_id in self.sparse_feature_ids:
             dim += const.model_param.embedding_dim[feat_id]
         
-        # Add dimension for the sequence embedding from feature '210'
+        # Dimension for the user history sequence embedding
         dim += const.model_param.embedding_dim['item_id']
         return dim
     
     def setup_embedding_layer(self):
+        """Initializes embedding layers for all sparse context features."""
         emb_dict = nn.ModuleDict()
-        # Create embedding layers for all sparse context features
-        for feat_id in const.context_feature.sparse_feature_ids:
+        for feat_id in self.sparse_feature_ids:
             emb_dict[feat_id] = nn.Embedding(const.model_param.embedding_table_size[feat_id] + 1, 
                                                     const.model_param.embedding_dim[feat_id], 
                                                     padding_idx=0)
         return emb_dict
 
     def forward(self, feature_dict):
+        """Forward pass for ContextTower."""
         feat_emb_list = []
         
-        # Process all sparse context features
-        for feat_id in const.context_feature.sparse_feature_ids:
+        for feat_id in self.sparse_feature_ids:
             if feat_id in feature_dict:
                 feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
                 feature_dict.pop(feat_id)
 
-        # Process the user's historical clicked item sequence feature '210'
-        if '210' in feature_dict:
-            mask = (feature_dict['210'] != 0).long()
-            user_seq_emb = torch.sum(self.item_embedding(feature_dict['210']), dim=-2)
+        # Process the user's historical clicked item sequence
+        if self.user_history_feature_id in feature_dict:
+            history_seq = feature_dict[self.user_history_feature_id]
+            mask = (history_seq != 0).long()
+            # Note: Simple averaging might lose sequential info. Consider Attention Pooling or GRU for improvement.
+            user_seq_emb = torch.sum(self.item_embedding(history_seq), dim=-2)
             valid_mask = (mask.sum(-1) != 0)
             user_seq_emb = torch.where(valid_mask.unsqueeze(-1), 
                                        user_seq_emb / mask.sum(-1).unsqueeze(-1).clamp(min=1), 
                                        torch.zeros_like(user_seq_emb))
             feat_emb_list.append(user_seq_emb)
-            feature_dict.pop('210')
+            feature_dict.pop(self.user_history_feature_id)
         
         context_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(context_features)
 
 class BaselineModel(nn.Module):
+    """The main model orchestrating the towers and attention mechanism."""
     def __init__(self):
         super().__init__()
         self.item_tower = ItemTower()
         self.user_tower = UserTower()
         self.context_tower = ContextTower(self.item_tower.sparse_emb['item_id'])
-        self.merge_dnn = nn.Sequential(
-            nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units),
-            # nn.LayerNorm(const.model_param.hidden_units),
-            # nn.Dropout(const.model_param.dropout),
+        
+        # Improved fusion layer for all features
+        self.fusion_dnn = nn.Sequential(
+            nn.Linear(const.model_param.hidden_units * 3, const.model_param.hidden_units),
+            nn.ReLU(),
+            nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units)
         )
-        self.context_dnn = nn.Linear(const.model_param.hidden_units * 2, const.model_param.hidden_units)
         
         self.pos_embedding = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
         self.emb_dropout = nn.Dropout(const.model_param.dropout)
@@ -226,17 +249,17 @@ class BaselineModel(nn.Module):
                                                         const.model_param.dropout,
                                                         const.model_param.norm_first)
         
-    def add_pos_embedding(self, seqs_id, emb, ):
-        # emb *= const.model_param.hidden_units ** 0.5
-        # valid_mask = (seqs_id != 0).long()
-        # poss = torch.cumsum(valid_mask, dim=1)
-        # poss = poss * valid_mask
-        # emb += self.pos_embedding(poss)
+    def add_pos_embedding(self, seqs_id, emb):
+        """Adds positional embedding to the sequence embedding."""
+        valid_mask = (seqs_id != 0).long()
+        poss = torch.cumsum(valid_mask, dim=1)
+        poss = poss * valid_mask
+        emb += self.pos_embedding(poss)
         emb = self.emb_dropout(emb)
         return emb
     
-        
     def forward_item(self, seq_id, feature_dict, token_type=None):
+        """Helper to forward item features."""
         if token_type is None:
             token_type = torch.ones_like(seq_id, dtype=torch.bool, device=seq_id.device)
         else:
@@ -244,22 +267,23 @@ class BaselineModel(nn.Module):
         return self.item_tower(seq_id, token_type, feature_dict)
     
     def forward_all_feat(self, seq_id, token_type, feature_dict):
+        """Forwards all features through their respective towers and fuses them."""
         item_feat = self.forward_item(seq_id, feature_dict, token_type)
         user_feat = self.user_tower(seq_id, token_type == 2, feature_dict)
         context_feat = self.context_tower(feature_dict)
-        seq_feat = torch.cat([item_feat, context_feat], dim=-1)
-        seq_feat = self.context_dnn(seq_feat)
         
-        all_feat = user_feat + seq_feat
-        return self.merge_dnn(all_feat)
-    
-        
+        # Fuse all features by concatenation followed by a DNN
+        all_feat = self.fusion_dnn(torch.cat([user_feat, item_feat, context_feat], dim=-1))
+        return all_feat
+            
     def forward(self, seqs_id, token_type, feat_dict):
+        """The main forward pass of the model."""
         emb = self.forward_all_feat(seqs_id, token_type, feat_dict)
         feat = self.add_pos_embedding(seqs_id, emb)
         
         maxlen = seqs_id.shape[1]
         
+        # Create attention mask for causal self-attention with padding
         ones_matrix = torch.ones((maxlen, maxlen), dtype=torch.bool, device=token_type.device)
         attention_mask_tril = torch.tril(ones_matrix)
         attention_mask_pad = (token_type != 0)

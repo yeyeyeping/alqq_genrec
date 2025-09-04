@@ -83,7 +83,8 @@ class ContextFeature:
             "404", # user_cross_freq_101_102
         )
         self.seq_len = 10
-        self.array_feature_ids = ("210", )
+        self.user_history_feature_id = "210"
+        self.array_feature_ids = (self.user_history_feature_id, )
         
         self.all_feature_ids = sorted(list(self.sparse_feature_ids) + list(self.array_feature_ids))
     
