@@ -153,6 +153,7 @@ class MyDataset(Dataset):
             raise ValueError(f"Invalid sequence type: {type(seq)}")
         
         return pad_value + seq
+    
     def seq2feat(self, ext_user_seq):
         item_id_list = []
         action_type_list = []
@@ -177,8 +178,6 @@ class MyDataset(Dataset):
                 
             ts_list.append(ts)
             
-
-        
         item_id_list = MyDataset.pad_seq(item_id_list, const.max_seq_len, 0)
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len, 0)
         seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0,]*const.context_feature.seq_len)

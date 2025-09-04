@@ -95,7 +95,7 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         neg_emb = model.item_tower(neg_id, neg_feat)
         pos_emb = model.item_tower(next_ids, next_feat)
 
-        indices = torch.where(next_ids != 1) 
+        indices = torch.where(next_ids != 0) 
         
         anchor_emb = F.normalize(next_token_emb[indices[0], indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
