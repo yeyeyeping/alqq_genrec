@@ -25,7 +25,7 @@ max_seq_len = 101
 # 训练相关
 l2_alpha = 1e-7
 device = "cuda"
-batch_size = 256
+batch_size = 180
 num_workers = 8
 num_epochs = 10
 warmup_t = 2000

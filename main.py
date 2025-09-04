@@ -64,7 +64,7 @@ def make_input_and_label(seq_id, action_type, feat, context_feat):
     return input_ids, input_action_type, input_feat, context_feat, label_ids, label_action_type, label_feat
 
 def train_one_step(batch, emb_loader, loader, model:BaselineModel):
-    global hard_neg_bank_id, hard_neg_bank_feat
+    # global hard_neg_bank_id, hard_neg_bank_feat
     user_id, user_feat, action_type, item_id, item_feat, context_feat = batch
     item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 1)
     # 负样本采样
@@ -105,13 +105,13 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         loss += l2_reg_loss(model,const.l2_alpha)
         
         with torch.no_grad():
-            prob = logits.softmax(dim=-1)
-            neg_mean_prob = prob[:,1:].mean(dim=0)
+            # prob = logits.softmax(dim=-1)
+            # neg_mean_prob = prob[:,1:].mean(dim=0)
             
-            topk_indices = torch.topk(neg_mean_prob, k=1000, largest=True)[1]
-            hard_neg_bank_id = torch.cat([hard_neg_bank_id, neg_id[topk_indices]])[-10000:]
-            hard_neg_bank_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k][topk_indices]])[-10000:]
-                                  for k in hard_neg_bank_feat.keys()}
+            # topk_indices = torch.topk(neg_mean_prob, k=1000, largest=True)[1]
+            # hard_neg_bank_id = torch.cat([hard_neg_bank_id, neg_id[topk_indices]])[-10000:]
+            # hard_neg_bank_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k][topk_indices]])[-10000:]
+            #                       for k in hard_neg_bank_feat.keys()}
             
             top1_correct, top10_correct, entropy = compute_metrics(logits)
     return loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,neg_id.shape[0]
@@ -208,13 +208,13 @@ if __name__ == '__main__':
     neg_loader = iter(sample_neg())
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
-    hard_neg_bank_id = torch.zeros(10000, dtype=torch.int32, device=const.device)
+    # hard_neg_bank_id = torch.zeros(10000, dtype=torch.int32, device=const.device)
     
-    hard_neg_bank_feat = {
-        k:torch.zeros(10000, dtype=torch.int32, device=const.device)
-        for k in const.item_feature.all_feature_ids
-    }
-    hard_neg_bank_feat['81'] = torch.zeros(10000, const.mm_emb_dim['81'], dtype=torch.float32, device=const.device)
+    # hard_neg_bank_feat = {
+    #     k:torch.zeros(10000, dtype=torch.int32, device=const.device)
+    #     for k in const.item_feature.all_feature_ids
+    # }
+    # hard_neg_bank_feat['81'] = torch.zeros(10000, const.mm_emb_dim['81'], dtype=torch.float32, device=const.device)
     
     for epoch in range(1, const.num_epochs + 1):
         model.train()
