@@ -1,0 +1,359 @@
+2025-09-04 15:30:33.274 INFO: ====== Begin cmd ======
+
+2025-09-04 15:30:34.345 /home/taiji/dl/runtime/script
+
+2025-09-04 15:30:34.351 Archive: submit.zip
+
+2025-09-04 15:30:34.351 creating: submit/
+
+2025-09-04 15:30:34.351 creating: submit/const/
+
+2025-09-04 15:30:34.351 inflating: submit/const/model.py
+
+2025-09-04 15:30:34.351 inflating: submit/const/feature.py
+
+2025-09-04 15:30:34.351 inflating: submit/const/__init__.py
+
+2025-09-04 15:30:34.351 inflating: submit/loss.py
+
+2025-09-04 15:30:34.351 inflating: submit/main.py
+
+2025-09-04 15:30:34.351 inflating: submit/utils.py
+
+2025-09-04 15:30:34.352 inflating: submit/sampler.py
+
+2025-09-04 15:30:34.352 inflating: submit/dataset.py
+
+2025-09-04 15:30:34.352 inflating: submit/mm_emb_loader.py
+
+2025-09-04 15:30:34.352 creating: submit/model/
+
+2025-09-04 15:30:34.352 inflating: submit/model/model.py
+
+2025-09-04 15:30:34.352 inflating: submit/model/atten.py
+
+2025-09-04 15:30:34.352 inflating: submit/model/__init__.py
+
+2025-09-04 15:30:34.352 creating: submit/const/__pycache__/
+
+2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/feature.cpython-313.pyc
+
+2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/__init__.cpython-311.pyc
+
+2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/__init__.cpython-313.pyc
+
+2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/feature.cpython-311.pyc
+
+2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/model.cpython-313.pyc
+
+2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/model.cpython-311.pyc
+
+2025-09-04 15:30:34.352 creating: submit/model/__pycache__/
+
+2025-09-04 15:30:34.352 inflating: submit/model/__pycache__/__init__.cpython-313.pyc
+
+2025-09-04 15:30:34.352 inflating: submit/model/__pycache__/atten.cpython-313.pyc
+
+2025-09-04 15:30:34.353 inflating: submit/model/__pycache__/model.cpython-313.pyc
+
+2025-09-04 15:30:34.353 inflating: submit/statistical_features.py
+
+2025-09-04 15:30:34.353 inflating: submit/semantic_loader.py
+
+2025-09-04 15:30:34.563 [DEBUG][libvgpu]hijack_call.c:169 [p:338 t:338]init cuda hook lib
+
+2025-09-04 15:30:34.563 [DEBUG][libvgpu]hijack_call.c:170 [p:338 t:338]Thread pid:338, tid:338
+
+2025-09-04 15:30:34.563 [DEBUG][libvgpu]hijack_call.c:188 [p:338 t:338]env_ld_library_path: /usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/libvgpu
+
+2025-09-04 15:30:34.567 [DEBUG][libvgpu]hijack_call.c:250 [p:338 t:338]hooked env NCCL_SET_THREAD_NAME to : 1
+
+2025-09-04 15:30:34.567 [DEBUG][libvgpu]hijack_call.c:251 [p:338 t:338]hooked LD_LIBRARY_PATH to : /usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/libvgpu
+
+2025-09-04 15:30:34.567 [DEBUG][libvgpu]hijack_call.c:252 [p:338 t:338]hooked libnvml_realpath to : /lib/x86_64-linux-gnu/libnvidia-ml.so.1
+
+2025-09-04 15:30:34.567 [DEBUG][libvgpu]hijack_call.c:253 [p:338 t:338]hooked libcuda_realpath to : /lib/x86_64-linux-gnu/libcuda.so.1
+
+2025-09-04 15:30:35.545 total user feature: 8, ids: ['103', '104', '105', '106', '107', '108', '109', '110']
+
+2025-09-04 15:30:35.545 total item feature: 20, ids: ['100', '101', '102', '112', '114', '115', '116', '117', '118', '119', '120', '122', '130', '131', '132', '133', '134', '135', '136', '137']
+
+2025-09-04 15:30:35.545 total feature: 28, ids: ['103', '104', '105', '106', '107', '108', '109', '110', '100', '101', '102', '112', '114', '115', '116', '117', '118', '119', '120', '122', '130', '131', '132', '133', '134', '135', '136', '137']
+
+2025-09-04 15:30:35.546 Training data path: /data_ams/training_data
+
+2025-09-04 15:30:38.039 2025-09-04 15:30:38.039282: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+
+2025-09-04 15:30:38.050 2025-09-04 15:30:38.049923: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+
+2025-09-04 15:30:38.060 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+
+2025-09-04 15:30:38.060 E0000 00:00:1756971038.060800 334 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+
+2025-09-04 15:30:38.064 E0000 00:00:1756971038.064053 334 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+
+2025-09-04 15:30:38.073 W0000 00:00:1756971038.073404 334 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+
+2025-09-04 15:30:38.073 W0000 00:00:1756971038.073419 334 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+
+2025-09-04 15:30:38.073 W0000 00:00:1756971038.073421 334 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+
+2025-09-04 15:30:38.073 W0000 00:00:1756971038.073422 334 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+
+2025-09-04 15:30:38.076 2025-09-04 15:30:38.076287: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+
+2025-09-04 15:30:38.076 To enable the following instructions: AVX2 AVX512F AVX512_VNNI AVX512_BF16 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+
+2025-09-04 15:30:40.028 /opt/conda/envs/competition/lib/python3.10/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: '/opt/conda/envs/competition/lib/python3.10/site-packages/torchvision/image.so: undefined symbol: _ZN3c1017RegisterOperatorsD1Ev'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+
+2025-09-04 15:30:40.028 warn(
+
+2025-09-04 15:30:41.454 Calculating statistical features...
+
+2025-09-04 15:31:06.706 Processed 100000 lines...
+
+2025-09-04 15:31:32.468 Processed 200000 lines...
+
+2025-09-04 15:31:57.958 Processed 300000 lines...
+
+2025-09-04 15:32:23.491 Processed 400000 lines...
+
+2025-09-04 15:32:48.511 Processed 500000 lines...
+
+2025-09-04 15:33:14.243 Processed 600000 lines...
+
+2025-09-04 15:33:40.021 Processed 700000 lines...
+
+2025-09-04 15:34:05.319 Processed 800000 lines...
+
+2025-09-04 15:34:31.035 Processed 900000 lines...
+
+2025-09-04 15:34:56.247 Processed 1000000 lines...
+
+2025-09-04 15:34:56.705 Finished processing all lines.
+
+2025-09-04 15:34:57.097 Saving statistical features to cache: cache/statistical_features.pkl
+
+2025-09-04 15:35:00.139 item feature dim:
+
+2025-09-04 15:35:00.139 item_id : 96, 100 : 112, 101 : 128, 102 : 160, 112 : 176, 114 : 192, 115 : 208, 116 : 224, 117 : 240, 118 : 256, 119 : 280, 120 : 304, 122 : 336, 130 : 352, 131 : 368, 132 : 384, 133 : 392, 134 : 400, 135 : 408, 136 : 416, 137 : 420, dense : 420
+
+2025-09-04 15:35:00.446 user feature dim:
+
+2025-09-04 15:35:00.446 user_id : 64, 103 : 80, 104 : 96, 105 : 112, 109 : 128, 106 : 144, 107 : 160, 108 : 176, 110 : 192, dense : 192
+
+2025-09-04 15:35:00.473 BaselineModel(
+
+2025-09-04 15:35:00.473 (item_tower): ItemTower(
+
+2025-09-04 15:35:00.473 (sparse_emb): ModuleDict(
+
+2025-09-04 15:35:00.473 (item_id): Embedding(4783155, 96, padding_idx=0)
+
+2025-09-04 15:35:00.473 (100): Embedding(7, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (101): Embedding(52, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (102): Embedding(90710, 32, padding_idx=0)
+
+2025-09-04 15:35:00.473 (112): Embedding(31, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (114): Embedding(21, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (115): Embedding(692, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (116): Embedding(19, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (117): Embedding(498, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (118): Embedding(1427, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (119): Embedding(4192, 24, padding_idx=0)
+
+2025-09-04 15:35:00.473 (120): Embedding(3393, 24, padding_idx=0)
+
+2025-09-04 15:35:00.473 (122): Embedding(90920, 32, padding_idx=0)
+
+2025-09-04 15:35:00.473 (130): Embedding(257, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (131): Embedding(257, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (132): Embedding(257, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (133): Embedding(129, 8, padding_idx=0)
+
+2025-09-04 15:35:00.473 (134): Embedding(129, 8, padding_idx=0)
+
+2025-09-04 15:35:00.473 (135): Embedding(65, 8, padding_idx=0)
+
+2025-09-04 15:35:00.473 (136): Embedding(65, 8, padding_idx=0)
+
+2025-09-04 15:35:00.473 (137): Embedding(33, 4, padding_idx=0)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (dnn): Sequential(
+
+2025-09-04 15:35:00.473 (0): Linear(in_features=420, out_features=128, bias=True)
+
+2025-09-04 15:35:00.473 (1): ReLU()
+
+2025-09-04 15:35:00.473 (2): Linear(in_features=128, out_features=256, bias=True)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (mm_liner): ModuleDict()
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (user_tower): UserTower(
+
+2025-09-04 15:35:00.473 (sparse_emb): ModuleDict(
+
+2025-09-04 15:35:00.473 (user_id): Embedding(1001846, 64, padding_idx=0)
+
+2025-09-04 15:35:00.473 (103): Embedding(87, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (104): Embedding(3, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (105): Embedding(8, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (109): Embedding(4, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (106): Embedding(15, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (107): Embedding(20, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (108): Embedding(5, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (110): Embedding(3, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (dnn): Sequential(
+
+2025-09-04 15:35:00.473 (0): Linear(in_features=192, out_features=128, bias=True)
+
+2025-09-04 15:35:00.473 (1): ReLU()
+
+2025-09-04 15:35:00.473 (2): Linear(in_features=128, out_features=256, bias=True)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (context_tower): ContextTower(
+
+2025-09-04 15:35:00.473 (sparse_emb): ModuleDict(
+
+2025-09-04 15:35:00.473 (201): Embedding(21, 32, padding_idx=0)
+
+2025-09-04 15:35:00.473 (202): Embedding(9, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (203): Embedding(26, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (204): Embedding(14, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (205): Embedding(33, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (206): Embedding(21, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (301): Embedding(4, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (302): Embedding(4, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (303): Embedding(52, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (401): Embedding(21, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (402): Embedding(21, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (403): Embedding(52, 16, padding_idx=0)
+
+2025-09-04 15:35:00.473 (404): Embedding(50001, 32, padding_idx=0)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (dnn): Sequential(
+
+2025-09-04 15:35:00.473 (0): Linear(in_features=336, out_features=128, bias=True)
+
+2025-09-04 15:35:00.473 (1): ReLU()
+
+2025-09-04 15:35:00.473 (2): Linear(in_features=128, out_features=256, bias=True)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (item_embedding): Embedding(4783155, 96, padding_idx=0)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (merge_dnn): Sequential(
+
+2025-09-04 15:35:00.473 (0): Linear(in_features=256, out_features=256, bias=True)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (context_dnn): Linear(in_features=512, out_features=256, bias=True)
+
+2025-09-04 15:35:00.473 (pos_embedding): Embedding(102, 256, padding_idx=0)
+
+2025-09-04 15:35:00.473 (emb_dropout): Dropout(p=0.2, inplace=False)
+
+2025-09-04 15:35:00.473 (casual_attention_layers): AttentionDecoder(
+
+2025-09-04 15:35:00.473 (attention_layernorms): ModuleList(
+
+2025-09-04 15:35:00.473 (0-7): 8 x RMSNorm((256,), eps=1e-08, elementwise_affine=True)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (attention_layers): ModuleList(
+
+2025-09-04 15:35:00.473 (0-7): 8 x FlashMultiHeadAttention(
+
+2025-09-04 15:35:00.473 (q_linear): Linear(in_features=256, out_features=256, bias=True)
+
+2025-09-04 15:35:00.473 (k_linear): Linear(in_features=256, out_features=256, bias=True)
+
+2025-09-04 15:35:00.473 (v_linear): Linear(in_features=256, out_features=256, bias=True)
+
+2025-09-04 15:35:00.473 (out_linear): Linear(in_features=256, out_features=256, bias=True)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (forward_layernorms): ModuleList(
+
+2025-09-04 15:35:00.473 (0-7): 8 x RMSNorm((256,), eps=1e-08, elementwise_affine=True)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (forward_layers): ModuleList(
+
+2025-09-04 15:35:00.473 (0-7): 8 x PointWiseFeedForward(
+
+2025-09-04 15:35:00.473 (conv1): Conv1d(256, 256, kernel_size=(1,), stride=(1,))
+
+2025-09-04 15:35:00.473 (dropout1): Dropout(p=0.2, inplace=False)
+
+2025-09-04 15:35:00.473 (relu): ReLU()
+
+2025-09-04 15:35:00.473 (conv2): Conv1d(256, 256, kernel_size=(1,), stride=(1,))
+
+2025-09-04 15:35:00.473 (dropout2): Dropout(p=0.2, inplace=False)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 (last_layernorm): RMSNorm((256,), eps=1e-08, elementwise_affine=True)
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:00.473 )
+
+2025-09-04 15:35:15.962 Start training
+
+2025-09-04 15:44:50.899 [TRAIN] {"global_step": "0/78270", "grad_norm": 6.531820774078369, "loss": 10.654287338256836, "sim_pos": -0.001251220703125, "sim_neg": -0.00225830078125, "epoch": 1, "lr": 1e-05, "time": 572.7804690646008, "gpu_mem_alloc": "0.00 MB", "gpu_mem_max": "0.00 MB"}

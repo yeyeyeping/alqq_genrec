@@ -23,7 +23,7 @@ class MyDataset(Dataset):
         self.seq_file_fp = None
         
         # Load statistical features
-        cache_dir = os.environ.get('CACHE_DIR', './cache')
+        cache_dir = os.environ.get('USER_CACHE_PATH', './stats_cache')
         self.stat_features = get_statistical_features(self.data_path, cache_dir)
     def __len__(self):
         return len(self.seq_offsets)

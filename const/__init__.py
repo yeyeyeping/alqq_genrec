@@ -25,8 +25,8 @@ mm_emb_dim = {
 max_seq_len = 101
 # 训练相关
 l2_alpha = 1e-7
-device = "cpu"
-batch_size = 128
+device = "cuda"
+batch_size = 192
 num_workers = 8
 num_epochs = 10
 warmup_t = 2000

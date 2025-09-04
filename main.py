@@ -190,7 +190,7 @@ if __name__ == '__main__':
             
             loss = loss.item()
             
-            if global_step % 10 == 0:
+            if global_step % 200 == 0:
                 log_json = json.dumps(
                     {
                         'global_step': f"{global_step}/{total_step}",
