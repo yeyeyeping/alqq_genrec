@@ -88,10 +88,10 @@ def train_one_step(epoch, batch, emb_loader, loader, model:BaselineModel):
     #     neg_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k]]) for k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
 
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
-        if epoch < 5:
-            shift = 1
-        else:
-            shift = random.randint(1, 5)
+        # if epoch < 5:
+        #     shift = 1
+        # else:
+        shift = random.randint(1, 5)
         
         time_matrix = context_feat['500']
         context_feat.pop('500')

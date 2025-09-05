@@ -31,10 +31,10 @@ num_epochs = 10
 warmup_t = 2000
 lr = 3e-3
 seed = 3407
-sampling_strategy = "hot" # hot
+sampling_strategy = "random" # hot
 hot_exp_ratio = 0.2
 hot_click_ratio = 0.05
-neg_sample_num = 20000
+neg_sample_num = 30000
 temperature = 0.04
 grad_norm = 1.0
 # 推理相关
