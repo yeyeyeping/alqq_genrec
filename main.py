@@ -176,6 +176,8 @@ if __name__ == '__main__':
         model.train()
 
         for step, batch in enumerate(train_loader):
+            if step == 0 and epoch == 1:
+                print(batch)
             st_time = time.perf_counter()
             optimizer.zero_grad()
             

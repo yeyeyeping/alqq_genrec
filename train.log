@@ -1,359 +1,633 @@
-2025-09-04 15:30:33.274 INFO: ====== Begin cmd ======
+2025-09-04 16:16:44.039 ##########################################################################
 
-2025-09-04 15:30:34.345 /home/taiji/dl/runtime/script
+2025-09-04 16:16:44.039 ############################ TAIJI JOB START #############################
 
-2025-09-04 15:30:34.351 Archive: submit.zip
+2025-09-04 16:16:44.039 ##########################################################################
 
-2025-09-04 15:30:34.351 creating: submit/
+2025-09-04 16:16:44.072 cp: cannot stat './/*': No such file or directory
 
-2025-09-04 15:30:34.351 creating: submit/const/
+2025-09-04 16:16:44.081 passwd: password expiry information changed.
 
-2025-09-04 15:30:34.351 inflating: submit/const/model.py
+2025-09-04 16:16:49.047 Complete setting taiji user.
 
-2025-09-04 15:30:34.351 inflating: submit/const/feature.py
+2025-09-04 16:16:54.003 update taiji environ ...
 
-2025-09-04 15:30:34.351 inflating: submit/const/__init__.py
+2025-09-04 16:16:54.004 show args: --appName=8b0fbb29990039ef019913cc787e0edc --projectName=external-ams-competition-2025 --module=pytorch --script=/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/scripts/8b0fbb29990039ef019913cc787e0edc/run.sh --script_archive=/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/scripts/8b0fbb29990039ef019913cc787e0edc/submit.zip,/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/scripts/8b0fbb29990039ef019913cc787e0edc/.taiji_run.json --script_args=
 
-2025-09-04 15:30:34.351 inflating: submit/loss.py
+2025-09-04 16:16:54.032 INFO: ===begin to run init cmd===
 
-2025-09-04 15:30:34.351 inflating: submit/main.py
+2025-09-04 16:16:54.032 INFO: Export env: RUNTIME_SCRIPT_DIR=/home/taiji/dl/runtime/script
 
-2025-09-04 15:30:34.351 inflating: submit/utils.py
+2025-09-04 16:16:54.042 INFO: Export env: RUNTIME_SCRIPT_SHARE_DIR=/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/8b0fbb29990039ef019913cc787e0edc/pipeline/8b0fbb29990039ef019913cc787e0edc/share
 
-2025-09-04 15:30:34.352 inflating: submit/sampler.py
+2025-09-04 16:16:54.042 INFO: script_path :/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/scripts/8b0fbb29990039ef019913cc787e0edc/run.sh
 
-2025-09-04 15:30:34.352 inflating: submit/dataset.py
+2025-09-04 16:16:54.049 INFO: Success copy to /home/taiji/dl/runtime/script/run.sh
 
-2025-09-04 15:30:34.352 inflating: submit/mm_emb_loader.py
+2025-09-04 16:16:54.056 INFO: Success copy to /home/taiji/dl/runtime/script/submit.zip
 
-2025-09-04 15:30:34.352 creating: submit/model/
+2025-09-04 16:16:54.063 INFO: Success copy to /home/taiji/dl/runtime/script/.taiji_run.json
 
-2025-09-04 15:30:34.352 inflating: submit/model/model.py
+2025-09-04 16:16:54.063 INFO: python path: /home/taiji/dl/runtime/script/submit.zip:/home/taiji/dl/runtime/script/.taiji_run.json
 
-2025-09-04 15:30:34.352 inflating: submit/model/atten.py
+2025-09-04 16:16:54.063 INFO: Export env: TRAIN_CKPT_PATH=/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/8b0fbb29990039ef019913cc787e0edc/ckpt
 
-2025-09-04 15:30:34.352 inflating: submit/model/__init__.py
+2025-09-04 16:16:54.063 INFO: Export env: TRAIN_TF_EVENTS_PATH=/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/8b0fbb29990039ef019913cc787e0edc/events
 
-2025-09-04 15:30:34.352 creating: submit/const/__pycache__/
+2025-09-04 16:16:54.063 INFO: Export env: TRAIN_DATA_PATH=/data_ams/training_data
 
-2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/feature.cpython-313.pyc
+2025-09-04 16:16:54.063 INFO: Export env: TRAIN_USER=ams_2025_1029748620018686215
 
-2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/__init__.cpython-311.pyc
+2025-09-04 16:16:54.063 INFO: Export env: TRAIN_LOG_PATH=/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/8b0fbb29990039ef019913cc787e0edc/log
 
-2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/__init__.cpython-313.pyc
+2025-09-04 16:16:54.063 INFO: Export env: TRAIN_CACHE_PATH=/apdcephfs_fsgm/share_303710656/angel/groups/2/ams_2025_1029748620018686215
 
-2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/feature.cpython-311.pyc
+2025-09-04 16:16:54.063 INFO: Export env: USER_CACHE_PATH=/apdcephfs_fsgm/share_303710656/angel/groups/2/ams_2025_1029748620018686215
 
-2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/model.cpython-313.pyc
+2025-09-04 16:16:54.063 INFO: Export env: NP_BD_FLOW_PROJ=6553000
 
-2025-09-04 15:30:34.352 inflating: submit/const/__pycache__/model.cpython-311.pyc
+2025-09-04 16:16:54.088 [TAIJI] waiting for all peers to be ready...
 
-2025-09-04 15:30:34.352 creating: submit/model/__pycache__/
+2025-09-04 16:16:55.901 Welcome to Ubuntu 22.04.3 LTS (GNU/Linux 5.4.241-1-tlinux4-0017.7 x86_64)
 
-2025-09-04 15:30:34.352 inflating: submit/model/__pycache__/__init__.cpython-313.pyc
+2025-09-04 16:16:55.901
 
-2025-09-04 15:30:34.352 inflating: submit/model/__pycache__/atten.cpython-313.pyc
+2025-09-04 16:16:55.901 * Documentation: https://help.ubuntu.com
 
-2025-09-04 15:30:34.353 inflating: submit/model/__pycache__/model.cpython-313.pyc
+2025-09-04 16:16:55.901 * Management: https://landscape.canonical.com
 
-2025-09-04 15:30:34.353 inflating: submit/statistical_features.py
+2025-09-04 16:16:55.901 * Support: https://ubuntu.com/pro
 
-2025-09-04 15:30:34.353 inflating: submit/semantic_loader.py
+2025-09-04 16:16:55.901
 
-2025-09-04 15:30:34.563 [DEBUG][libvgpu]hijack_call.c:169 [p:338 t:338]init cuda hook lib
+2025-09-04 16:16:55.901 This system has been minimized by removing packages and content that are
 
-2025-09-04 15:30:34.563 [DEBUG][libvgpu]hijack_call.c:170 [p:338 t:338]Thread pid:338, tid:338
+2025-09-04 16:16:55.901 not required on a system that users do not log into.
 
-2025-09-04 15:30:34.563 [DEBUG][libvgpu]hijack_call.c:188 [p:338 t:338]env_ld_library_path: /usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/libvgpu
+2025-09-04 16:16:55.901
 
-2025-09-04 15:30:34.567 [DEBUG][libvgpu]hijack_call.c:250 [p:338 t:338]hooked env NCCL_SET_THREAD_NAME to : 1
+2025-09-04 16:16:55.901 To restore this content, you can run the 'unminimize' command.
 
-2025-09-04 15:30:34.567 [DEBUG][libvgpu]hijack_call.c:251 [p:338 t:338]hooked LD_LIBRARY_PATH to : /usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/libvgpu
+2025-09-04 16:16:55.901
 
-2025-09-04 15:30:34.567 [DEBUG][libvgpu]hijack_call.c:252 [p:338 t:338]hooked libnvml_realpath to : /lib/x86_64-linux-gnu/libnvidia-ml.so.1
+2025-09-04 16:16:55.901 The programs included with the Ubuntu system are free software;
 
-2025-09-04 15:30:34.567 [DEBUG][libvgpu]hijack_call.c:253 [p:338 t:338]hooked libcuda_realpath to : /lib/x86_64-linux-gnu/libcuda.so.1
+2025-09-04 16:16:55.901 the exact distribution terms for each program are described in the
 
-2025-09-04 15:30:35.545 total user feature: 8, ids: ['103', '104', '105', '106', '107', '108', '109', '110']
+2025-09-04 16:16:55.901 individual files in /usr/share/doc/*/copyright.
 
-2025-09-04 15:30:35.545 total item feature: 20, ids: ['100', '101', '102', '112', '114', '115', '116', '117', '118', '119', '120', '122', '130', '131', '132', '133', '134', '135', '136', '137']
+2025-09-04 16:16:55.901
 
-2025-09-04 15:30:35.545 total feature: 28, ids: ['103', '104', '105', '106', '107', '108', '109', '110', '100', '101', '102', '112', '114', '115', '116', '117', '118', '119', '120', '122', '130', '131', '132', '133', '134', '135', '136', '137']
+2025-09-04 16:16:55.901 Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
 
-2025-09-04 15:30:35.546 Training data path: /data_ams/training_data
+2025-09-04 16:16:55.901 applicable law.
 
-2025-09-04 15:30:38.039 2025-09-04 15:30:38.039282: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2025-09-04 16:16:55.901
 
-2025-09-04 15:30:38.050 2025-09-04 15:30:38.049923: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2025-09-04 16:16:56.904 [TAIJI] error log above can be ignored
 
-2025-09-04 15:30:38.060 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+2025-09-04 16:16:56.909 [TAIJI] run command 1756973816 [/bin/bash -c "${start_script}"]
 
-2025-09-04 15:30:38.060 E0000 00:00:1756971038.060800 334 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2025-09-04 16:16:59.921 Complete setting network policy rules.
 
-2025-09-04 15:30:38.064 E0000 00:00:1756971038.064053 334 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2025-09-04 16:17:04.932 update taiji environ ...
 
-2025-09-04 15:30:38.073 W0000 00:00:1756971038.073404 334 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-09-04 16:17:04.932 show args: --appName=8b0fbb29990039ef019913cc787e0edc --projectName=external-ams-competition-2025n --module=pytorch --script=/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/scripts/8b0fbb29990039ef019913cc787e0edc/run.sh --script_archive=/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/scripts/8b0fbb29990039ef019913cc787e0edc/submit.zip,/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/scripts/8b0fbb29990039ef019913cc787e0edc/.taiji_run.json --script_args=
 
-2025-09-04 15:30:38.073 W0000 00:00:1756971038.073419 334 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-09-04 16:17:04.964 INFO: ===begin to run starttorch cmd===
 
-2025-09-04 15:30:38.073 W0000 00:00:1756971038.073421 334 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-09-04 16:17:04.964 INFO: runtime_script_share_dir is /apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/8b0fbb29990039ef019913cc787e0edc/pipeline/8b0fbb29990039ef019913cc787e0edc/share
 
-2025-09-04 15:30:38.073 W0000 00:00:1756971038.073422 334 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2025-09-04 16:17:04.964 INFO: script_path :/apdcephfs_fsgm/share_303710656/angel/ams_2025_1029748620018686215/angel_training_ams_2025_1029748620018686215_20250904112125_fc8ed2cf/scripts/8b0fbb29990039ef019913cc787e0edc/run.sh
 
-2025-09-04 15:30:38.076 2025-09-04 15:30:38.076287: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+2025-09-04 16:17:04.965 INFO: framework is pytorch
 
-2025-09-04 15:30:38.076 To enable the following instructions: AVX2 AVX512F AVX512_VNNI AVX512_BF16 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2025-09-04 16:17:04.965 INFO: Run command: bash /home/taiji/dl/runtime/script/run.sh
 
-2025-09-04 15:30:40.028 /opt/conda/envs/competition/lib/python3.10/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: '/opt/conda/envs/competition/lib/python3.10/site-packages/torchvision/image.so: undefined symbol: _ZN3c1017RegisterOperatorsD1Ev'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+2025-09-04 16:17:04.965 INFO: ====== Begin cmd ======
 
-2025-09-04 15:30:40.028 warn(
+2025-09-04 16:17:05.943 /home/taiji/dl/runtime/script
 
-2025-09-04 15:30:41.454 Calculating statistical features...
+2025-09-04 16:17:05.949 Archive: submit.zip
 
-2025-09-04 15:31:06.706 Processed 100000 lines...
+2025-09-04 16:17:05.949 creating: submit/
 
-2025-09-04 15:31:32.468 Processed 200000 lines...
+2025-09-04 16:17:05.949 creating: submit/const/
 
-2025-09-04 15:31:57.958 Processed 300000 lines...
+2025-09-04 16:17:05.949 inflating: submit/const/model.py
 
-2025-09-04 15:32:23.491 Processed 400000 lines...
+2025-09-04 16:17:05.949 inflating: submit/const/feature.py
 
-2025-09-04 15:32:48.511 Processed 500000 lines...
+2025-09-04 16:17:05.949 inflating: submit/const/__init__.py
 
-2025-09-04 15:33:14.243 Processed 600000 lines...
+2025-09-04 16:17:05.949 inflating: submit/loss.py
 
-2025-09-04 15:33:40.021 Processed 700000 lines...
+2025-09-04 16:17:05.949 inflating: submit/main.py
 
-2025-09-04 15:34:05.319 Processed 800000 lines...
+2025-09-04 16:17:05.949 inflating: submit/utils.py
 
-2025-09-04 15:34:31.035 Processed 900000 lines...
+2025-09-04 16:17:05.949 inflating: submit/sampler.py
 
-2025-09-04 15:34:56.247 Processed 1000000 lines...
+2025-09-04 16:17:05.949 inflating: submit/dataset.py
 
-2025-09-04 15:34:56.705 Finished processing all lines.
+2025-09-04 16:17:05.949 inflating: submit/mm_emb_loader.py
 
-2025-09-04 15:34:57.097 Saving statistical features to cache: cache/statistical_features.pkl
+2025-09-04 16:17:05.949 creating: submit/model/
 
-2025-09-04 15:35:00.139 item feature dim:
+2025-09-04 16:17:05.949 inflating: submit/model/model.py
 
-2025-09-04 15:35:00.139 item_id : 96, 100 : 112, 101 : 128, 102 : 160, 112 : 176, 114 : 192, 115 : 208, 116 : 224, 117 : 240, 118 : 256, 119 : 280, 120 : 304, 122 : 336, 130 : 352, 131 : 368, 132 : 384, 133 : 392, 134 : 400, 135 : 408, 136 : 416, 137 : 420, dense : 420
+2025-09-04 16:17:05.950 inflating: submit/model/atten.py
 
-2025-09-04 15:35:00.446 user feature dim:
+2025-09-04 16:17:05.950 inflating: submit/model/__init__.py
 
-2025-09-04 15:35:00.446 user_id : 64, 103 : 80, 104 : 96, 105 : 112, 109 : 128, 106 : 144, 107 : 160, 108 : 176, 110 : 192, dense : 192
+2025-09-04 16:17:05.950 creating: submit/const/__pycache__/
 
-2025-09-04 15:35:00.473 BaselineModel(
+2025-09-04 16:17:05.950 inflating: submit/const/__pycache__/feature.cpython-313.pyc
 
-2025-09-04 15:35:00.473 (item_tower): ItemTower(
+2025-09-04 16:17:05.950 inflating: submit/const/__pycache__/__init__.cpython-311.pyc
 
-2025-09-04 15:35:00.473 (sparse_emb): ModuleDict(
+2025-09-04 16:17:05.950 inflating: submit/const/__pycache__/__init__.cpython-313.pyc
 
-2025-09-04 15:35:00.473 (item_id): Embedding(4783155, 96, padding_idx=0)
+2025-09-04 16:17:05.950 inflating: submit/const/__pycache__/feature.cpython-311.pyc
 
-2025-09-04 15:35:00.473 (100): Embedding(7, 16, padding_idx=0)
+2025-09-04 16:17:05.950 inflating: submit/const/__pycache__/model.cpython-313.pyc
 
-2025-09-04 15:35:00.473 (101): Embedding(52, 16, padding_idx=0)
+2025-09-04 16:17:05.950 inflating: submit/const/__pycache__/model.cpython-311.pyc
 
-2025-09-04 15:35:00.473 (102): Embedding(90710, 32, padding_idx=0)
+2025-09-04 16:17:05.950 creating: submit/model/__pycache__/
 
-2025-09-04 15:35:00.473 (112): Embedding(31, 16, padding_idx=0)
+2025-09-04 16:17:05.950 inflating: submit/model/__pycache__/__init__.cpython-313.pyc
 
-2025-09-04 15:35:00.473 (114): Embedding(21, 16, padding_idx=0)
+2025-09-04 16:17:05.950 inflating: submit/model/__pycache__/atten.cpython-313.pyc
 
-2025-09-04 15:35:00.473 (115): Embedding(692, 16, padding_idx=0)
+2025-09-04 16:17:05.950 inflating: submit/model/__pycache__/model.cpython-313.pyc
 
-2025-09-04 15:35:00.473 (116): Embedding(19, 16, padding_idx=0)
+2025-09-04 16:17:05.950 inflating: submit/statistical_features.py
 
-2025-09-04 15:35:00.473 (117): Embedding(498, 16, padding_idx=0)
+2025-09-04 16:17:05.950 inflating: submit/semantic_loader.py
 
-2025-09-04 15:35:00.473 (118): Embedding(1427, 16, padding_idx=0)
+2025-09-04 16:17:06.203 [DEBUG][libvgpu]hijack_call.c:169 [p:337 t:337]init cuda hook lib
 
-2025-09-04 15:35:00.473 (119): Embedding(4192, 24, padding_idx=0)
+2025-09-04 16:17:06.203 [DEBUG][libvgpu]hijack_call.c:170 [p:337 t:337]Thread pid:337, tid:337
 
-2025-09-04 15:35:00.473 (120): Embedding(3393, 24, padding_idx=0)
+2025-09-04 16:17:06.203 [DEBUG][libvgpu]hijack_call.c:188 [p:337 t:337]env_ld_library_path: /usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/libvgpu
 
-2025-09-04 15:35:00.473 (122): Embedding(90920, 32, padding_idx=0)
+2025-09-04 16:17:06.207 [DEBUG][libvgpu]hijack_call.c:250 [p:337 t:337]hooked env NCCL_SET_THREAD_NAME to : 1
 
-2025-09-04 15:35:00.473 (130): Embedding(257, 16, padding_idx=0)
+2025-09-04 16:17:06.207 [DEBUG][libvgpu]hijack_call.c:251 [p:337 t:337]hooked LD_LIBRARY_PATH to : /usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/libvgpu
 
-2025-09-04 15:35:00.473 (131): Embedding(257, 16, padding_idx=0)
+2025-09-04 16:17:06.207 [DEBUG][libvgpu]hijack_call.c:252 [p:337 t:337]hooked libnvml_realpath to : /lib/x86_64-linux-gnu/libnvidia-ml.so.1
 
-2025-09-04 15:35:00.473 (132): Embedding(257, 16, padding_idx=0)
+2025-09-04 16:17:06.207 [DEBUG][libvgpu]hijack_call.c:253 [p:337 t:337]hooked libcuda_realpath to : /lib/x86_64-linux-gnu/libcuda.so.1
 
-2025-09-04 15:35:00.473 (133): Embedding(129, 8, padding_idx=0)
+2025-09-04 16:17:07.129 total user feature: 8, ids: ['103', '104', '105', '106', '107', '108', '109', '110']
 
-2025-09-04 15:35:00.473 (134): Embedding(129, 8, padding_idx=0)
+2025-09-04 16:17:07.129 total item feature: 20, ids: ['100', '101', '102', '112', '114', '115', '116', '117', '118', '119', '120', '122', '130', '131', '132', '133', '134', '135', '136', '137']
 
-2025-09-04 15:35:00.473 (135): Embedding(65, 8, padding_idx=0)
+2025-09-04 16:17:07.129 total feature: 28, ids: ['103', '104', '105', '106', '107', '108', '109', '110', '100', '101', '102', '112', '114', '115', '116', '117', '118', '119', '120', '122', '130', '131', '132', '133', '134', '135', '136', '137']
 
-2025-09-04 15:35:00.473 (136): Embedding(65, 8, padding_idx=0)
+2025-09-04 16:17:07.130 Training data path: /data_ams/training_data
 
-2025-09-04 15:35:00.473 (137): Embedding(33, 4, padding_idx=0)
+2025-09-04 16:17:09.739 2025-09-04 16:17:09.738940: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:17:09.748 2025-09-04 16:17:09.748360: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
 
-2025-09-04 15:35:00.473 (dnn): Sequential(
+2025-09-04 16:17:09.759 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
 
-2025-09-04 15:35:00.473 (0): Linear(in_features=420, out_features=128, bias=True)
+2025-09-04 16:17:09.759 E0000 00:00:1756973829.759083 333 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
 
-2025-09-04 15:35:00.473 (1): ReLU()
+2025-09-04 16:17:09.762 E0000 00:00:1756973829.762376 333 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
 
-2025-09-04 15:35:00.473 (2): Linear(in_features=128, out_features=256, bias=True)
+2025-09-04 16:17:09.771 W0000 00:00:1756973829.771259 333 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:17:09.771 W0000 00:00:1756973829.771271 333 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
 
-2025-09-04 15:35:00.473 (mm_liner): ModuleDict()
+2025-09-04 16:17:09.771 W0000 00:00:1756973829.771273 333 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:17:09.771 W0000 00:00:1756973829.771274 333 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
 
-2025-09-04 15:35:00.473 (user_tower): UserTower(
+2025-09-04 16:17:09.774 2025-09-04 16:17:09.774007: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
 
-2025-09-04 15:35:00.473 (sparse_emb): ModuleDict(
+2025-09-04 16:17:09.774 To enable the following instructions: AVX2 AVX512F AVX512_VNNI AVX512_BF16 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
 
-2025-09-04 15:35:00.473 (user_id): Embedding(1001846, 64, padding_idx=0)
+2025-09-04 16:17:11.540 /opt/conda/envs/competition/lib/python3.10/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: '/opt/conda/envs/competition/lib/python3.10/site-packages/torchvision/image.so: undefined symbol: _ZN3c1017RegisterOperatorsD1Ev'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
 
-2025-09-04 15:35:00.473 (103): Embedding(87, 16, padding_idx=0)
+2025-09-04 16:17:11.540 warn(
 
-2025-09-04 15:35:00.473 (104): Embedding(3, 16, padding_idx=0)
+2025-09-04 16:17:12.636 Calculating statistical features...
 
-2025-09-04 15:35:00.473 (105): Embedding(8, 16, padding_idx=0)
+2025-09-04 16:17:37.649 Processed 100000 lines...
 
-2025-09-04 15:35:00.473 (109): Embedding(4, 16, padding_idx=0)
+2025-09-04 16:18:02.780 Processed 200000 lines...
 
-2025-09-04 15:35:00.473 (106): Embedding(15, 16, padding_idx=0)
+2025-09-04 16:18:27.529 Processed 300000 lines...
 
-2025-09-04 15:35:00.473 (107): Embedding(20, 16, padding_idx=0)
+2025-09-04 16:18:52.678 Processed 400000 lines...
 
-2025-09-04 15:35:00.473 (108): Embedding(5, 16, padding_idx=0)
+2025-09-04 16:19:17.570 Processed 500000 lines...
 
-2025-09-04 15:35:00.473 (110): Embedding(3, 16, padding_idx=0)
+2025-09-04 16:19:42.857 Processed 600000 lines...
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:20:08.338 Processed 700000 lines...
 
-2025-09-04 15:35:00.473 (dnn): Sequential(
+2025-09-04 16:20:33.473 Processed 800000 lines...
 
-2025-09-04 15:35:00.473 (0): Linear(in_features=192, out_features=128, bias=True)
+2025-09-04 16:20:58.871 Processed 900000 lines...
 
-2025-09-04 15:35:00.473 (1): ReLU()
+2025-09-04 16:21:23.810 Processed 1000000 lines...
 
-2025-09-04 15:35:00.473 (2): Linear(in_features=128, out_features=256, bias=True)
+2025-09-04 16:21:24.272 Finished processing all lines.
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:24.753 Saving statistical features to cache: /apdcephfs_fsgm/share_303710656/angel/groups/2/ams_2025_1029748620018686215/statistical_features.pkl
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.028 item feature dim:
 
-2025-09-04 15:35:00.473 (context_tower): ContextTower(
+2025-09-04 16:21:28.028 item_id : 96, 100 : 112, 101 : 128, 102 : 160, 112 : 176, 114 : 192, 115 : 208, 116 : 224, 117 : 240, 118 : 256, 119 : 280, 120 : 304, 122 : 336, 130 : 352, 131 : 368, 132 : 384, 133 : 392, 134 : 400, 135 : 408, 136 : 416, 137 : 420, dense : 420
 
-2025-09-04 15:35:00.473 (sparse_emb): ModuleDict(
+2025-09-04 16:21:28.338 user feature dim:
 
-2025-09-04 15:35:00.473 (201): Embedding(21, 32, padding_idx=0)
+2025-09-04 16:21:28.338 user_id : 64, 103 : 80, 104 : 96, 105 : 112, 109 : 128, 106 : 144, 107 : 160, 108 : 176, 110 : 192, dense : 192
 
-2025-09-04 15:35:00.473 (202): Embedding(9, 16, padding_idx=0)
+2025-09-04 16:21:28.924 BaselineModel(
 
-2025-09-04 15:35:00.473 (203): Embedding(26, 16, padding_idx=0)
+2025-09-04 16:21:28.924 (item_tower): ItemTower(
 
-2025-09-04 15:35:00.473 (204): Embedding(14, 16, padding_idx=0)
+2025-09-04 16:21:28.924 (sparse_emb): ModuleDict(
 
-2025-09-04 15:35:00.473 (205): Embedding(33, 16, padding_idx=0)
+2025-09-04 16:21:28.924 (item_id): Embedding(4783155, 96, padding_idx=0)
 
-2025-09-04 15:35:00.473 (206): Embedding(21, 16, padding_idx=0)
+2025-09-04 16:21:28.924 (100): Embedding(7, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (301): Embedding(4, 16, padding_idx=0)
+2025-09-04 16:21:28.924 (101): Embedding(52, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (302): Embedding(4, 16, padding_idx=0)
+2025-09-04 16:21:28.924 (102): Embedding(90710, 32, padding_idx=0)
 
-2025-09-04 15:35:00.473 (303): Embedding(52, 16, padding_idx=0)
+2025-09-04 16:21:28.924 (112): Embedding(31, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (401): Embedding(21, 16, padding_idx=0)
+2025-09-04 16:21:28.924 (114): Embedding(21, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (402): Embedding(21, 16, padding_idx=0)
+2025-09-04 16:21:28.924 (115): Embedding(692, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (403): Embedding(52, 16, padding_idx=0)
+2025-09-04 16:21:28.924 (116): Embedding(19, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (404): Embedding(50001, 32, padding_idx=0)
+2025-09-04 16:21:28.924 (117): Embedding(498, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 (118): Embedding(1427, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (dnn): Sequential(
+2025-09-04 16:21:28.924 (119): Embedding(4192, 24, padding_idx=0)
 
-2025-09-04 15:35:00.473 (0): Linear(in_features=336, out_features=128, bias=True)
+2025-09-04 16:21:28.924 (120): Embedding(3393, 24, padding_idx=0)
 
-2025-09-04 15:35:00.473 (1): ReLU()
+2025-09-04 16:21:28.924 (122): Embedding(90920, 32, padding_idx=0)
 
-2025-09-04 15:35:00.473 (2): Linear(in_features=128, out_features=256, bias=True)
+2025-09-04 16:21:28.924 (130): Embedding(257, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 (131): Embedding(257, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (item_embedding): Embedding(4783155, 96, padding_idx=0)
+2025-09-04 16:21:28.924 (132): Embedding(257, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 (133): Embedding(129, 8, padding_idx=0)
 
-2025-09-04 15:35:00.473 (merge_dnn): Sequential(
+2025-09-04 16:21:28.924 (134): Embedding(129, 8, padding_idx=0)
 
-2025-09-04 15:35:00.473 (0): Linear(in_features=256, out_features=256, bias=True)
+2025-09-04 16:21:28.924 (135): Embedding(65, 8, padding_idx=0)
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 (136): Embedding(65, 8, padding_idx=0)
 
-2025-09-04 15:35:00.473 (context_dnn): Linear(in_features=512, out_features=256, bias=True)
+2025-09-04 16:21:28.924 (137): Embedding(33, 4, padding_idx=0)
 
-2025-09-04 15:35:00.473 (pos_embedding): Embedding(102, 256, padding_idx=0)
+2025-09-04 16:21:28.924 )
 
-2025-09-04 15:35:00.473 (emb_dropout): Dropout(p=0.2, inplace=False)
+2025-09-04 16:21:28.924 (dnn): Sequential(
 
-2025-09-04 15:35:00.473 (casual_attention_layers): AttentionDecoder(
+2025-09-04 16:21:28.924 (0): Linear(in_features=420, out_features=128, bias=True)
 
-2025-09-04 15:35:00.473 (attention_layernorms): ModuleList(
+2025-09-04 16:21:28.924 (1): ReLU()
 
-2025-09-04 15:35:00.473 (0-7): 8 x RMSNorm((256,), eps=1e-08, elementwise_affine=True)
+2025-09-04 16:21:28.924 (2): Linear(in_features=128, out_features=256, bias=True)
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 )
 
-2025-09-04 15:35:00.473 (attention_layers): ModuleList(
+2025-09-04 16:21:28.924 (mm_liner): ModuleDict()
 
-2025-09-04 15:35:00.473 (0-7): 8 x FlashMultiHeadAttention(
+2025-09-04 16:21:28.924 )
 
-2025-09-04 15:35:00.473 (q_linear): Linear(in_features=256, out_features=256, bias=True)
+2025-09-04 16:21:28.924 (user_tower): UserTower(
 
-2025-09-04 15:35:00.473 (k_linear): Linear(in_features=256, out_features=256, bias=True)
+2025-09-04 16:21:28.924 (sparse_emb): ModuleDict(
 
-2025-09-04 15:35:00.473 (v_linear): Linear(in_features=256, out_features=256, bias=True)
+2025-09-04 16:21:28.924 (user_id): Embedding(1001846, 64, padding_idx=0)
 
-2025-09-04 15:35:00.473 (out_linear): Linear(in_features=256, out_features=256, bias=True)
+2025-09-04 16:21:28.924 (103): Embedding(87, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 (104): Embedding(3, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 (105): Embedding(8, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (forward_layernorms): ModuleList(
+2025-09-04 16:21:28.924 (109): Embedding(4, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (0-7): 8 x RMSNorm((256,), eps=1e-08, elementwise_affine=True)
+2025-09-04 16:21:28.924 (106): Embedding(15, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 (107): Embedding(20, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (forward_layers): ModuleList(
+2025-09-04 16:21:28.924 (108): Embedding(5, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (0-7): 8 x PointWiseFeedForward(
+2025-09-04 16:21:28.924 (110): Embedding(3, 16, padding_idx=0)
 
-2025-09-04 15:35:00.473 (conv1): Conv1d(256, 256, kernel_size=(1,), stride=(1,))
+2025-09-04 16:21:28.924 )
 
-2025-09-04 15:35:00.473 (dropout1): Dropout(p=0.2, inplace=False)
+2025-09-04 16:21:28.924 (dnn): Sequential(
 
-2025-09-04 15:35:00.473 (relu): ReLU()
+2025-09-04 16:21:28.924 (0): Linear(in_features=192, out_features=128, bias=True)
 
-2025-09-04 15:35:00.473 (conv2): Conv1d(256, 256, kernel_size=(1,), stride=(1,))
+2025-09-04 16:21:28.924 (1): ReLU()
 
-2025-09-04 15:35:00.473 (dropout2): Dropout(p=0.2, inplace=False)
+2025-09-04 16:21:28.924 (2): Linear(in_features=128, out_features=256, bias=True)
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 )
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 )
 
-2025-09-04 15:35:00.473 (last_layernorm): RMSNorm((256,), eps=1e-08, elementwise_affine=True)
+2025-09-04 16:21:28.924 (context_tower): ContextTower(
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 (sparse_emb): ModuleDict(
 
-2025-09-04 15:35:00.473 )
+2025-09-04 16:21:28.924 (201): Embedding(21, 32, padding_idx=0)
 
-2025-09-04 15:35:15.962 Start training
+2025-09-04 16:21:28.924 (202): Embedding(9, 16, padding_idx=0)
 
-2025-09-04 15:44:50.899 [TRAIN] {"global_step": "0/78270", "grad_norm": 6.531820774078369, "loss": 10.654287338256836, "sim_pos": -0.001251220703125, "sim_neg": -0.00225830078125, "epoch": 1, "lr": 1e-05, "time": 572.7804690646008, "gpu_mem_alloc": "0.00 MB", "gpu_mem_max": "0.00 MB"}
+2025-09-04 16:21:28.924 (203): Embedding(26, 16, padding_idx=0)
+
+2025-09-04 16:21:28.924 (204): Embedding(14, 16, padding_idx=0)
+
+2025-09-04 16:21:28.924 (205): Embedding(33, 16, padding_idx=0)
+
+2025-09-04 16:21:28.924 (206): Embedding(21, 16, padding_idx=0)
+
+2025-09-04 16:21:28.924 (301): Embedding(4, 16, padding_idx=0)
+
+2025-09-04 16:21:28.924 (302): Embedding(4, 16, padding_idx=0)
+
+2025-09-04 16:21:28.924 (303): Embedding(52, 16, padding_idx=0)
+
+2025-09-04 16:21:28.924 (401): Embedding(21, 16, padding_idx=0)
+
+2025-09-04 16:21:28.924 (402): Embedding(21, 16, padding_idx=0)
+
+2025-09-04 16:21:28.924 (403): Embedding(52, 16, padding_idx=0)
+
+2025-09-04 16:21:28.924 (404): Embedding(50001, 32, padding_idx=0)
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:28.924 (dnn): Sequential(
+
+2025-09-04 16:21:28.924 (0): Linear(in_features=336, out_features=128, bias=True)
+
+2025-09-04 16:21:28.924 (1): ReLU()
+
+2025-09-04 16:21:28.924 (2): Linear(in_features=128, out_features=256, bias=True)
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:28.924 (item_embedding): Embedding(4783155, 96, padding_idx=0)
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:28.924 (merge_dnn): Sequential(
+
+2025-09-04 16:21:28.924 (0): Linear(in_features=256, out_features=256, bias=True)
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:28.924 (context_dnn): Linear(in_features=512, out_features=256, bias=True)
+
+2025-09-04 16:21:28.924 (pos_embedding): Embedding(102, 256, padding_idx=0)
+
+2025-09-04 16:21:28.924 (emb_dropout): Dropout(p=0.2, inplace=False)
+
+2025-09-04 16:21:28.924 (casual_attention_layers): AttentionDecoder(
+
+2025-09-04 16:21:28.924 (attention_layernorms): ModuleList(
+
+2025-09-04 16:21:28.924 (0-7): 8 x RMSNorm((256,), eps=1e-08, elementwise_affine=True)
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:28.924 (attention_layers): ModuleList(
+
+2025-09-04 16:21:28.924 (0-7): 8 x FlashMultiHeadAttention(
+
+2025-09-04 16:21:28.924 (q_linear): Linear(in_features=256, out_features=256, bias=True)
+
+2025-09-04 16:21:28.924 (k_linear): Linear(in_features=256, out_features=256, bias=True)
+
+2025-09-04 16:21:28.924 (v_linear): Linear(in_features=256, out_features=256, bias=True)
+
+2025-09-04 16:21:28.924 (out_linear): Linear(in_features=256, out_features=256, bias=True)
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:28.924 (forward_layernorms): ModuleList(
+
+2025-09-04 16:21:28.924 (0-7): 8 x RMSNorm((256,), eps=1e-08, elementwise_affine=True)
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:28.924 (forward_layers): ModuleList(
+
+2025-09-04 16:21:28.924 (0-7): 8 x PointWiseFeedForward(
+
+2025-09-04 16:21:28.924 (conv1): Conv1d(256, 256, kernel_size=(1,), stride=(1,))
+
+2025-09-04 16:21:28.924 (dropout1): Dropout(p=0.2, inplace=False)
+
+2025-09-04 16:21:28.924 (relu): ReLU()
+
+2025-09-04 16:21:28.924 (conv2): Conv1d(256, 256, kernel_size=(1,), stride=(1,))
+
+2025-09-04 16:21:28.924 (dropout2): Dropout(p=0.2, inplace=False)
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:28.924 (last_layernorm): RMSNorm((256,), eps=1e-08, elementwise_affine=True)
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:28.924 )
+
+2025-09-04 16:21:42.767 Start training
+
+2025-09-04 16:21:45.895 [TRAIN] {"global_step": "0/52180", "grad_norm": 8.404047012329102, "loss": 10.7085542678833, "sim_pos": 0.03050140105187893, "sim_neg": 0.03271484375, "epoch": 1, "lr": 1e-05, "time": 1.2129124999046326, "gpu_mem_alloc": "8228.37 MB", "gpu_mem_max": "11440.63 MB"}
+
+2025-09-04 16:22:23.150 [TRAIN] {"global_step": "200/52180", "grad_norm": 9.56569766998291, "loss": 7.615028381347656, "sim_pos": 0.09935855865478516, "sim_neg": -0.0908203125, "epoch": 1, "lr": 0.000209, "time": 0.20939707197248936, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15791.55 MB"}
+
+2025-09-04 16:23:00.595 [TRAIN] {"global_step": "400/52180", "grad_norm": 3.494070291519165, "loss": 6.8314738273620605, "sim_pos": 0.3847102224826813, "sim_neg": 0.11181640625, "epoch": 1, "lr": 0.00040800000000000005, "time": 0.17833855468779802, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15803.62 MB"}
+
+2025-09-04 16:23:38.133 [TRAIN] {"global_step": "600/52180", "grad_norm": 2.2909936904907227, "loss": 5.700550556182861, "sim_pos": 0.48777979612350464, "sim_neg": 0.1171875, "epoch": 1, "lr": 0.000607, "time": 0.23090377636253834, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15810.94 MB"}
+
+2025-09-04 16:24:15.195 [TRAIN] {"global_step": "800/52180", "grad_norm": 2.5695953369140625, "loss": 5.365798473358154, "sim_pos": 0.4594188928604126, "sim_neg": 0.0771484375, "epoch": 1, "lr": 0.0008060000000000001, "time": 0.17287829238921404, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15810.94 MB"}
+
+2025-09-04 16:24:52.938 [TRAIN] {"global_step": "1000/52180", "grad_norm": 3.4857301712036133, "loss": 5.077458381652832, "sim_pos": 0.48486098647117615, "sim_neg": 0.054931640625, "epoch": 1, "lr": 0.001005, "time": 0.21456882264465094, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15810.94 MB"}
+
+2025-09-04 16:25:30.430 [TRAIN] {"global_step": "1200/52180", "grad_norm": 2.9792592525482178, "loss": 5.122925281524658, "sim_pos": 0.5073306560516357, "sim_neg": 0.0673828125, "epoch": 1, "lr": 0.001204, "time": 0.15167205408215523, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15823.69 MB"}
+
+2025-09-04 16:26:07.987 [TRAIN] {"global_step": "1400/52180", "grad_norm": 1.553868293762207, "loss": 4.888723850250244, "sim_pos": 0.4773927330970764, "sim_neg": 0.047607421875, "epoch": 1, "lr": 0.001403, "time": 0.19098794274032116, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15823.69 MB"}
+
+2025-09-04 16:26:45.733 [TRAIN] {"global_step": "1600/52180", "grad_norm": 1.5306777954101562, "loss": 4.834423542022705, "sim_pos": 0.49119019508361816, "sim_neg": 0.0439453125, "epoch": 1, "lr": 0.0016020000000000001, "time": 0.22109363414347172, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15823.69 MB"}
+
+2025-09-04 16:27:23.283 [TRAIN] {"global_step": "1800/52180", "grad_norm": 1.204382061958313, "loss": 4.509815216064453, "sim_pos": 0.4831579625606537, "sim_neg": 0.025634765625, "epoch": 1, "lr": 0.001801, "time": 0.22793457750231028, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15823.69 MB"}
+
+2025-09-04 16:28:01.054 [TRAIN] {"global_step": "2000/52180", "grad_norm": 1.0881680250167847, "loss": 4.403587341308594, "sim_pos": 0.491407573223114, "sim_neg": 0.02001953125, "epoch": 1, "lr": 0.0019917208609536454, "time": 0.15381190180778503, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15823.69 MB"}
+
+2025-09-04 16:28:38.089 [TRAIN] {"global_step": "2200/52180", "grad_norm": 0.9970738291740417, "loss": 4.451010704040527, "sim_pos": 0.4829051196575165, "sim_neg": 0.00860595703125, "epoch": 1, "lr": 0.0019899852237437567, "time": 0.1840879488736391, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15823.69 MB"}
+
+2025-09-04 16:29:15.488 [TRAIN] {"global_step": "2400/52180", "grad_norm": 0.7814324498176575, "loss": 4.163073539733887, "sim_pos": 0.47195911407470703, "sim_neg": -0.0172119140625, "epoch": 1, "lr": 0.0019880854744146496, "time": 0.21824901923537254, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15823.69 MB"}
+
+2025-09-04 16:29:53.271 [TRAIN] {"global_step": "2600/52180", "grad_norm": 1.8412712812423706, "loss": 4.366077899932861, "sim_pos": 0.48145243525505066, "sim_neg": -0.000637054443359375, "epoch": 1, "lr": 0.0019860219360509483, "time": 0.17102831974625587, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15823.69 MB"}
+
+2025-09-04 16:30:29.658 [TRAIN] {"global_step": "2800/52180", "grad_norm": 1.246264100074768, "loss": 4.1645708084106445, "sim_pos": 0.4828908145427704, "sim_neg": -0.021728515625, "epoch": 1, "lr": 0.001983794959592383, "time": 0.18514687940478325, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15823.69 MB"}
+
+2025-09-04 16:31:07.072 [TRAIN] {"global_step": "3000/52180", "grad_norm": 1.0028867721557617, "loss": 3.9902191162109375, "sim_pos": 0.4806674122810364, "sim_neg": -0.0247802734375, "epoch": 1, "lr": 0.0019814049237741062, "time": 0.22324130218476057, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15823.69 MB"}
+
+2025-09-04 16:31:44.600 [TRAIN] {"global_step": "3200/52180", "grad_norm": 0.8268858194351196, "loss": 4.012331008911133, "sim_pos": 0.4712167978286743, "sim_neg": -0.03271484375, "epoch": 1, "lr": 0.0019788522350622836, "time": 0.1820754697546363, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15823.69 MB"}
+
+2025-09-04 16:32:22.376 [TRAIN] {"global_step": "3400/52180", "grad_norm": 0.6793836355209351, "loss": 3.974691152572632, "sim_pos": 0.501702606678009, "sim_neg": -0.0205078125, "epoch": 1, "lr": 0.001976137327584965, "time": 0.18748057261109352, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:33:00.206 [TRAIN] {"global_step": "3600/52180", "grad_norm": 1.1986459493637085, "loss": 3.948744773864746, "sim_pos": 0.46783390641212463, "sim_neg": -0.045654296875, "epoch": 1, "lr": 0.001973260663058257, "time": 0.18378732539713383, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:33:38.107 [TRAIN] {"global_step": "3800/52180", "grad_norm": 0.641788899898529, "loss": 3.7712275981903076, "sim_pos": 0.47870776057243347, "sim_neg": -0.048828125, "epoch": 1, "lr": 0.0019702227307077966, "time": 0.14205868542194366, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:34:15.959 [TRAIN] {"global_step": "4000/52180", "grad_norm": 0.7761479616165161, "loss": 3.775418996810913, "sim_pos": 0.47464558482170105, "sim_neg": -0.048095703125, "epoch": 1, "lr": 0.001967024047185554, "time": 0.21050149481743574, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:34:53.734 [TRAIN] {"global_step": "4200/52180", "grad_norm": 0.7040423154830933, "loss": 3.8928096294403076, "sim_pos": 0.48882487416267395, "sim_neg": -0.037353515625, "epoch": 1, "lr": 0.0019636651564819635, "time": 0.2256806716322899, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:35:30.893 [TRAIN] {"global_step": "4400/52180", "grad_norm": 0.9178966283798218, "loss": 3.7619543075561523, "sim_pos": 0.47982367873191833, "sim_neg": -0.053466796875, "epoch": 1, "lr": 0.001960146629833411, "time": 0.17387757264077663, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:36:07.322 [TRAIN] {"global_step": "4600/52180", "grad_norm": 0.5301492810249329, "loss": 3.666226863861084, "sim_pos": 0.4741450846195221, "sim_neg": -0.05419921875, "epoch": 1, "lr": 0.001956469065625085, "time": 0.17331109289079905, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:36:51.856 [TRAIN] {"global_step": "4800/52180", "grad_norm": 0.7021765112876892, "loss": 3.6181604862213135, "sim_pos": 0.4780066907405853, "sim_neg": -0.0634765625, "epoch": 1, "lr": 0.0019526330892892104, "time": 0.31231116969138384, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:37:46.214 [TRAIN] {"global_step": "5000/52180", "grad_norm": 1.1126244068145752, "loss": 3.783282518386841, "sim_pos": 0.46284815669059753, "sim_neg": -0.06787109375, "epoch": 1, "lr": 0.0019486393531986845, "time": 0.3252743314951658, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:38:41.142 [TRAIN] {"global_step": "5200/52180", "grad_norm": 0.768394947052002, "loss": 3.7248096466064453, "sim_pos": 0.4664740264415741, "sim_neg": -0.060791015625, "epoch": 1, "lr": 0.0019444885365561282, "time": 0.3180401362478733, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:39:40.795 [TRAIN] {"global_step": "5400/52180", "grad_norm": 0.7250487804412842, "loss": 3.4425840377807617, "sim_pos": 0.4758489429950714, "sim_neg": -0.076171875, "epoch": 2, "lr": 0.001940181345278377, "time": 0.22690610773861408, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:40:35.966 [TRAIN] {"global_step": "5600/52180", "grad_norm": 0.5217170715332031, "loss": 3.459336757659912, "sim_pos": 0.4824749529361725, "sim_neg": -0.07177734375, "epoch": 2, "lr": 0.0019357185118764283, "time": 0.29704178404062986, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:41:30.404 [TRAIN] {"global_step": "5800/52180", "grad_norm": 0.9026949405670166, "loss": 3.622302293777466, "sim_pos": 0.45491987466812134, "sim_neg": -0.08544921875, "epoch": 2, "lr": 0.001931100795330865, "time": 0.3093217331916094, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:42:23.132 [TRAIN] {"global_step": "6000/52180", "grad_norm": 0.6162799000740051, "loss": 3.4806935787200928, "sim_pos": 0.4754135012626648, "sim_neg": -0.06982421875, "epoch": 2, "lr": 0.0019263289809627773, "time": 0.23693171329796314, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:43:15.834 [TRAIN] {"global_step": "6200/52180", "grad_norm": 0.5356821417808533, "loss": 3.3660941123962402, "sim_pos": 0.4798930585384369, "sim_neg": -0.07177734375, "epoch": 2, "lr": 0.0019214038803002061, "time": 0.20721235498785973, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:43:58.565 [TRAIN] {"global_step": "6400/52180", "grad_norm": 0.7392469048500061, "loss": 3.5301787853240967, "sim_pos": 0.474802166223526, "sim_neg": -0.06494140625, "epoch": 2, "lr": 0.00191632633094013, "time": 0.1639126380905509, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:44:35.871 [TRAIN] {"global_step": "6600/52180", "grad_norm": 0.5550087690353394, "loss": 3.367060661315918, "sim_pos": 0.4662090539932251, "sim_neg": -0.08251953125, "epoch": 2, "lr": 0.0019110971964060154, "time": 0.24187875539064407, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:45:13.870 [TRAIN] {"global_step": "6800/52180", "grad_norm": 0.8637918829917908, "loss": 3.5093061923980713, "sim_pos": 0.4643944799900055, "sim_neg": -0.08154296875, "epoch": 2, "lr": 0.0019057173660009617, "time": 0.22664440888911486, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:45:52.525 [TRAIN] {"global_step": "7000/52180", "grad_norm": 0.6142376065254211, "loss": 3.278154134750366, "sim_pos": 0.46709713339805603, "sim_neg": -0.08154296875, "epoch": 2, "lr": 0.0019001877546564586, "time": 0.19332804158329964, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:46:31.090 [TRAIN] {"global_step": "7200/52180", "grad_norm": 0.6452559232711792, "loss": 3.2929792404174805, "sim_pos": 0.4586373269557953, "sim_neg": -0.09521484375, "epoch": 2, "lr": 0.0018945093027767886, "time": 0.18750534765422344, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:47:09.175 [TRAIN] {"global_step": "7400/52180", "grad_norm": 0.5179155468940735, "loss": 3.4271278381347656, "sim_pos": 0.47819846868515015, "sim_neg": -0.07080078125, "epoch": 2, "lr": 0.0018886829760790926, "time": 0.20703366864472628, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:47:48.025 [TRAIN] {"global_step": "7600/52180", "grad_norm": 0.5736390948295593, "loss": 3.328845977783203, "sim_pos": 0.4755828082561493, "sim_neg": -0.07666015625, "epoch": 2, "lr": 0.0018827097654291354, "time": 0.1879963083192706, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:48:26.177 [TRAIN] {"global_step": "7800/52180", "grad_norm": 0.6036018133163452, "loss": 3.375444173812866, "sim_pos": 0.47411268949508667, "sim_neg": -0.0654296875, "epoch": 2, "lr": 0.0018765906866727916, "time": 0.26846252754330635, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:49:05.379 [TRAIN] {"global_step": "8000/52180", "grad_norm": 0.5937131643295288, "loss": 3.338909864425659, "sim_pos": 0.4582330584526062, "sim_neg": -0.0830078125, "epoch": 2, "lr": 0.001870326780463283, "time": 0.15660678315907717, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:49:47.165 [TRAIN] {"global_step": "8200/52180", "grad_norm": 0.587162971496582, "loss": 3.472501754760742, "sim_pos": 0.461046040058136, "sim_neg": -0.07568359375, "epoch": 2, "lr": 0.0018639191120841984, "time": 0.27943006809800863, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:50:27.755 [TRAIN] {"global_step": "8400/52180", "grad_norm": 0.872361958026886, "loss": 3.3595163822174072, "sim_pos": 0.4629627466201782, "sim_neg": -0.08203125, "epoch": 2, "lr": 0.0018573687712683253, "time": 0.14285611733794212, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:51:06.493 [TRAIN] {"global_step": "8600/52180", "grad_norm": 0.4655056595802307, "loss": 3.3277926445007324, "sim_pos": 0.46437597274780273, "sim_neg": -0.0830078125, "epoch": 2, "lr": 0.0018506768720123197, "time": 0.15726151037961245, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:51:45.548 [TRAIN] {"global_step": "8800/52180", "grad_norm": 0.7235168814659119, "loss": 3.4556949138641357, "sim_pos": 0.4495367407798767, "sim_neg": -0.09716796875, "epoch": 2, "lr": 0.001843844552387254, "time": 0.2170017696917057, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:52:30.547 [TRAIN] {"global_step": "9000/52180", "grad_norm": 0.573921799659729, "loss": 3.231999158859253, "sim_pos": 0.4704301953315735, "sim_neg": -0.0810546875, "epoch": 2, "lr": 0.0018368729743450684, "time": 0.18685944098979235, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:53:25.809 [TRAIN] {"global_step": "9200/52180", "grad_norm": 0.6207054257392883, "loss": 3.2733614444732666, "sim_pos": 0.4596533179283142, "sim_neg": -0.08544921875, "epoch": 2, "lr": 0.0018297633235209612, "time": 0.27812555339187384, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:54:26.708 [TRAIN] {"global_step": "9400/52180", "grad_norm": 1.0055161714553833, "loss": 3.546764373779297, "sim_pos": 0.4565550684928894, "sim_neg": -0.08740234375, "epoch": 2, "lr": 0.0018225168090317506, "time": 0.27324687130749226, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:55:32.953 [TRAIN] {"global_step": "9600/52180", "grad_norm": 0.8118863105773926, "loss": 3.3367650508880615, "sim_pos": 0.45674800872802734, "sim_neg": -0.0947265625, "epoch": 2, "lr": 0.0018151346632702446, "time": 0.47754088416695595, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:56:40.195 [TRAIN] {"global_step": "9800/52180", "grad_norm": 0.5595240592956543, "loss": 3.253455638885498, "sim_pos": 0.4681713283061981, "sim_neg": -0.08251953125, "epoch": 2, "lr": 0.0018076181416956522, "time": 0.265319368802011, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:57:27.929 [TRAIN] {"global_step": "10000/52180", "grad_norm": 0.6116530299186707, "loss": 3.3335492610931396, "sim_pos": 0.4615119695663452, "sim_neg": -0.0869140625, "epoch": 2, "lr": 0.0017999685226200697, "time": 0.20976112503558397, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:58:15.922 [TRAIN] {"global_step": "10200/52180", "grad_norm": 0.49041464924812317, "loss": 3.2331676483154297, "sim_pos": 0.4609583616256714, "sim_neg": -0.08642578125, "epoch": 2, "lr": 0.0017921871069910842, "time": 0.21783873438835144, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:59:03.882 [TRAIN] {"global_step": "10400/52180", "grad_norm": 0.5513023138046265, "loss": 3.2722790241241455, "sim_pos": 0.4700559079647064, "sim_neg": -0.08837890625, "epoch": 2, "lr": 0.001784275218170523, "time": 0.18962340895086527, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 16:59:56.261 [TRAIN] {"global_step": "10600/52180", "grad_norm": 0.6095768809318542, "loss": 3.2162024974823, "sim_pos": 0.4600204527378082, "sim_neg": -0.0966796875, "epoch": 3, "lr": 0.0017762342017093946, "time": 0.2759736031293869, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:00:44.341 [TRAIN] {"global_step": "10800/52180", "grad_norm": 0.5415393710136414, "loss": 3.1794791221618652, "sim_pos": 0.45927658677101135, "sim_neg": -0.10009765625, "epoch": 3, "lr": 0.001768065425119056, "time": 0.21341789234429598, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:01:31.872 [TRAIN] {"global_step": "11000/52180", "grad_norm": 0.5744414925575256, "loss": 3.241297483444214, "sim_pos": 0.44867807626724243, "sim_neg": -0.10400390625, "epoch": 3, "lr": 0.0017597702776386418, "time": 0.22538587357848883, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:02:19.573 [TRAIN] {"global_step": "11200/52180", "grad_norm": 0.6175175905227661, "loss": 3.2275145053863525, "sim_pos": 0.4586603045463562, "sim_neg": -0.09326171875, "epoch": 3, "lr": 0.0017513501699988026, "time": 0.22714746929705143, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:03:07.725 [TRAIN] {"global_step": "11400/52180", "grad_norm": 0.5741074085235596, "loss": 3.1158082485198975, "sim_pos": 0.46188589930534363, "sim_neg": -0.09326171875, "epoch": 3, "lr": 0.0017428065341817851, "time": 0.2662377171218395, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:03:56.675 [TRAIN] {"global_step": "11600/52180", "grad_norm": 0.5557001233100891, "loss": 3.0706069469451904, "sim_pos": 0.4819534122943878, "sim_neg": -0.078125, "epoch": 3, "lr": 0.0017341408231778994, "time": 0.2578900046646595, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:05:04.145 [TRAIN] {"global_step": "11800/52180", "grad_norm": 0.5999535918235779, "loss": 3.2032434940338135, "sim_pos": 0.46957680583000183, "sim_neg": -0.080078125, "epoch": 3, "lr": 0.0017253545107384144, "time": 0.400195418857038, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:06:13.593 [TRAIN] {"global_step": "12000/52180", "grad_norm": 0.5526806116104126, "loss": 3.1216657161712646, "sim_pos": 0.4627222418785095, "sim_neg": -0.09033203125, "epoch": 3, "lr": 0.0017164490911249196, "time": 0.4253259664401412, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:07:23.805 [TRAIN] {"global_step": "12200/52180", "grad_norm": 0.520422637462616, "loss": 3.0846495628356934, "sim_pos": 0.4603302478790283, "sim_neg": -0.1015625, "epoch": 3, "lr": 0.0017074260788552014, "time": 0.32609126158058643, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:08:33.815 [TRAIN] {"global_step": "12400/52180", "grad_norm": 0.5285917520523071, "loss": 3.103630542755127, "sim_pos": 0.45668935775756836, "sim_neg": -0.0986328125, "epoch": 3, "lr": 0.0016982870084456746, "time": 0.3416940988972783, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:09:43.695 [TRAIN] {"global_step": "12600/52180", "grad_norm": 0.5925682783126831, "loss": 3.188961982727051, "sim_pos": 0.4609086215496063, "sim_neg": -0.08984375, "epoch": 3, "lr": 0.0016890334341504098, "time": 0.3220257917419076, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:10:54.230 [TRAIN] {"global_step": "12800/52180", "grad_norm": 0.6569425463676453, "loss": 3.175238609313965, "sim_pos": 0.4487924873828888, "sim_neg": -0.1025390625, "epoch": 3, "lr": 0.0016796669296968083, "time": 0.369635040871799, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:12:04.237 [TRAIN] {"global_step": "13000/52180", "grad_norm": 0.6808357834815979, "loss": 3.2975268363952637, "sim_pos": 0.44732093811035156, "sim_neg": -0.1025390625, "epoch": 3, "lr": 0.001670189088017961, "time": 0.30768151860684156, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:13:15.143 [TRAIN] {"global_step": "13200/52180", "grad_norm": 0.5262300968170166, "loss": 3.1151340007781982, "sim_pos": 0.45516401529312134, "sim_neg": -0.09423828125, "epoch": 3, "lr": 0.0016606015209817448, "time": 0.35076120775192976, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:14:25.358 [TRAIN] {"global_step": "13400/52180", "grad_norm": 0.5795273780822754, "loss": 3.17722749710083, "sim_pos": 0.4627561569213867, "sim_neg": -0.08837890625, "epoch": 3, "lr": 0.0016509058591166956, "time": 0.4025604519993067, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:15:35.570 [TRAIN] {"global_step": "13600/52180", "grad_norm": 0.5517203211784363, "loss": 3.178605079650879, "sim_pos": 0.472522497177124, "sim_neg": -0.083984375, "epoch": 3, "lr": 0.0016411037513347113, "time": 0.33671554923057556, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:16:45.381 [TRAIN] {"global_step": "13800/52180", "grad_norm": 0.5835710167884827, "loss": 3.013859510421753, "sim_pos": 0.4607541859149933, "sim_neg": -0.09423828125, "epoch": 3, "lr": 0.001631196864650623, "time": 0.3272163551300764, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:17:55.125 [TRAIN] {"global_step": "14000/52180", "grad_norm": 0.5725539326667786, "loss": 3.164433240890503, "sim_pos": 0.46287772059440613, "sim_neg": -0.08837890625, "epoch": 3, "lr": 0.0016211868838986948, "time": 0.3435300160199404, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:19:05.619 [TRAIN] {"global_step": "14200/52180", "grad_norm": 0.5875942707061768, "loss": 3.196617603302002, "sim_pos": 0.4564075767993927, "sim_neg": -0.09619140625, "epoch": 3, "lr": 0.0016110755114460864, "time": 0.3788547832518816, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:20:16.391 [TRAIN] {"global_step": "14400/52180", "grad_norm": 0.6677837371826172, "loss": 3.161214590072632, "sim_pos": 0.4520218074321747, "sim_neg": -0.09765625, "epoch": 3, "lr": 0.0016008644669033374, "time": 0.40032297000288963, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:21:26.489 [TRAIN] {"global_step": "14600/52180", "grad_norm": 0.6728173494338989, "loss": 3.192593812942505, "sim_pos": 0.4524501860141754, "sim_neg": -0.09326171875, "epoch": 3, "lr": 0.0015905554868319183, "time": 0.39292915910482407, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:22:35.580 [TRAIN] {"global_step": "14800/52180", "grad_norm": 0.6979089379310608, "loss": 3.2364070415496826, "sim_pos": 0.4649234712123871, "sim_neg": -0.08837890625, "epoch": 3, "lr": 0.0015801503244488992, "time": 0.38773652352392673, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:23:45.218 [TRAIN] {"global_step": "15000/52180", "grad_norm": 0.5853558778762817, "loss": 3.062586784362793, "sim_pos": 0.4644879400730133, "sim_neg": -0.095703125, "epoch": 3, "lr": 0.0015696507493287851, "time": 0.29926835000514984, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:24:55.136 [TRAIN] {"global_step": "15200/52180", "grad_norm": 0.5216524600982666, "loss": 3.1775195598602295, "sim_pos": 0.4721136689186096, "sim_neg": -0.0869140625, "epoch": 3, "lr": 0.0015590585471025693, "time": 0.3180099707096815, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:26:05.252 [TRAIN] {"global_step": "15400/52180", "grad_norm": 0.6058560013771057, "loss": 3.1707167625427246, "sim_pos": 0.4498273730278015, "sim_neg": -0.08837890625, "epoch": 3, "lr": 0.0015483755191540573, "time": 0.2965729236602783, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:27:15.689 [TRAIN] {"global_step": "15600/52180", "grad_norm": 0.6230249404907227, "loss": 3.1926400661468506, "sim_pos": 0.45797017216682434, "sim_neg": -0.09326171875, "epoch": 3, "lr": 0.001537603482313511, "time": 0.34435163997113705, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:28:31.310 [TRAIN] {"global_step": "15800/52180", "grad_norm": 0.5553344488143921, "loss": 2.91908597946167, "sim_pos": 0.47871455550193787, "sim_neg": -0.0849609375, "epoch": 4, "lr": 0.001526744268548664, "time": 0.40161199402064085, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:29:41.730 [TRAIN] {"global_step": "16000/52180", "grad_norm": 0.5165003538131714, "loss": 3.0189099311828613, "sim_pos": 0.47079840302467346, "sim_neg": -0.0908203125, "epoch": 4, "lr": 0.001515799724653167, "time": 0.36934916488826275, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:30:51.851 [TRAIN] {"global_step": "16200/52180", "grad_norm": 0.5127720236778259, "loss": 2.9895219802856445, "sim_pos": 0.4642959535121918, "sim_neg": -0.0966796875, "epoch": 4, "lr": 0.0015047717119325086, "time": 0.34346678759902716, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:32:01.897 [TRAIN] {"global_step": "16400/52180", "grad_norm": 0.5035698413848877, "loss": 2.929842472076416, "sim_pos": 0.4537147283554077, "sim_neg": -0.10498046875, "epoch": 4, "lr": 0.0014936621058874663, "time": 0.4018866093829274, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:33:11.104 [TRAIN] {"global_step": "16600/52180", "grad_norm": 0.5531045794487, "loss": 2.9192943572998047, "sim_pos": 0.4691062867641449, "sim_neg": -0.0966796875, "epoch": 4, "lr": 0.0014824727958951494, "time": 0.3295138329267502, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}
+
+2025-09-04 17:34:19.569 [TRAIN] {"global_step": "16800/52180", "grad_norm": 0.6540066599845886, "loss": 3.0221498012542725, "sim_pos": 0.4619150161743164, "sim_neg": -0.1025390625, "epoch": 4, "lr": 0.0014712056848876747, "time": 0.40837254375219345, "gpu_mem_alloc": "8227.83 MB", "gpu_mem_max": "15839.84 MB"}

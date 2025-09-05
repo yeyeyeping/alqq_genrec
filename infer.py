@@ -66,13 +66,13 @@ def infer():
     # 加载数据
     test_dataset = MyTestDataset(data_path=data_path)
     dataloader = DataLoader(test_dataset,
-                            batch_size=4096,  # 使用正确的512 
-                            num_workers=16, 
-                            pin_memory=True, 
+                            batch_size=const.infer_batch_size,  # 使用配置中的推理批量大小
+                            num_workers=const.num_workers,
+                            pin_memory=True,
                             persistent_workers=True,  # 保持worker存活
                             prefetch_factor=4)  # 预取4个batch
     
-    emb_loader = Memorymm81Embloader(data_path)
+    # emb_loader 已被移除，不再使用 Memorymm81Embloader
     # 加载模型
     model = BaselineModel().to(const.device)
     ckpt_path = get_ckpt_path()
@@ -84,13 +84,13 @@ def infer():
     item_creative_id = []
     print(f"start to obtain item features....")
     for item_id, feature, creative_id in next_batched_item(test_dataset.indexer['i'], const.infer_batch_size):
-        feature = emb_loader.add_mm_emb(item_id, feature)
+        # emb_loader.add_mm_emb 已被移除，直接使用原始特征
         item_id = item_id.to(const.device)
         feature = to_device(feature)
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
-            item_emb = F.normalize(model.forward_item(item_id, feature), dim=-1)
+            item_emb = F.normalize(model.forward_item(item_id, feature), dim=-1)  # 调用 forward_item 方法
         item_features.append(item_emb)
-        item_creative_id.append(creative_id)
+        item_creative_id.append(torch.as_tensor(creative_id, dtype=torch.int32))  # 确保 creative_id 的数据类型一致
     print(f"loadding {len(item_features)} item features")
     item_features_tensor = torch.cat(item_features, dim=0).to(const.device)
     item_creative_id_tensor = torch.cat(item_creative_id, dim=0)
@@ -104,14 +104,14 @@ def infer():
     t = time.time()
     print(f"start to predict {len(dataloader) * dataloader.batch_size} user seqs")
     for seq_id, token_type, feat_dict, user_id in dataloader:
-        feat_dict = emb_loader.add_mm_emb(seq_id, feat_dict, token_type == 1)
-        seq_id,token_type,feat_dict = seq_id.to(const.device), token_type.to(const.device), to_device(feat_dict)
+        # emb_loader.add_mm_emb 已被移除，直接使用原始特征
+        seq_id, token_type, feat_dict = seq_id.to(const.device), token_type.to(const.device), to_device(feat_dict)
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
-            next_token_emb = model(seq_id, token_type, feat_dict)
-            next_token_emb = F.normalize(next_token_emb[:,-1,:], dim=-1)
-            sim = next_token_emb @ item_features_tensor.T
-        _, indices = torch.topk(sim, k = 10)
-        top10_item_ids += item_creative_id_tensor[indices.cpu()].tolist()
+            next_token_emb = model(seq_id, token_type, feat_dict)  # 调用模型的 forward 方法
+            next_token_emb = F.normalize(next_token_emb[:, -1, :], dim=-1)  # 取最后一个时间步的嵌入
+            sim = next_token_emb @ item_features_tensor.T  # 计算相似度
+        _, indices = torch.topk(sim, k=10)
+        top10_item_ids += item_creative_id_tensor[indices.cpu()].tolist()  # 获取 top-k 结果
         
         
         user_id_list += list(user_id)

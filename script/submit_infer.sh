@@ -5,6 +5,7 @@ cp -r model tmp_infer/
 cp -r const tmp_infer/
 cp dataset.py tmp_infer/
 cp -r mm_emb_loader.py tmp_infer/
+cp statistical_features.py tmp_infer/
 
 zip -r submit_infer.zip tmp_infer
 
