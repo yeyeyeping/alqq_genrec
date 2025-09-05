@@ -21,11 +21,11 @@ class BaseMmEmbLoader:
 
 
 
-# class Memorymm81Embloader:
-#     def __init__(self, data_path):
-#         self.data_path = Path(data_path)
-#         self.feat_size = 32
-#         self.mm_emb_dict = self.load_81emb()
+class Memorymm81Embloader:
+    def __init__(self, data_path):
+        self.data_path = Path(data_path)
+        self.feat_size = 32
+        self.mm_emb_dict = {}  # 移除 81 号特征的加载逻辑
     
 #     def load_81emb(self):
 #         print("Loading 81 embeddings")

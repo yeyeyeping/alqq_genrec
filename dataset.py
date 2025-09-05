@@ -290,6 +290,10 @@ class MyTestDataset(Dataset):
         self.itemnum = len(self.indexer['i'])
         self.seq_file_fp = None
         
+        # Load statistical features
+        cache_dir = os.environ.get('USER_CACHE_PATH', './stats_cache')
+        self.stat_features = get_statistical_features(self.data_path, cache_dir)
+        
     def __len__(self):
         return len(self.seq_offsets)
     
@@ -393,6 +397,26 @@ class MyTestDataset(Dataset):
         
         front_click_item = []
         seq_list = []
+        
+        # --- New Feature Lists Initialization ---
+        is_repeated_101_list = []
+        is_repeated_102_list = []
+        prev_feature_101_list = []
+        prev_item_feat = {}
+        # -----------------------------------------
+        
+        # --- Statistical Feature Lists Initialization ---
+        global_id_pop_100_list = []
+        global_val_pop_101_list = []
+        user_most_freq_101_list = []
+        user_cross_freq_101_102_list = []
+        # ---------------------------------------------
+        
+        # Get user-level statistical features once
+        # Note: In test set, user_id is the original string ID, which should match the keys in stat_features
+        user_most_freq_val_101 = self.stat_features['user_most_freq_value_101'].get(user_id, 0)
+        user_cross_freq_val = self.stat_features['user_cross_freq_101_102'].get(user_id, 0)
+        
         for i, feat, token_type,action_type,ts in ext_user_sequence:
             id_list.append(i)
             token_type_list.append(token_type)
@@ -400,6 +424,48 @@ class MyTestDataset(Dataset):
             seq_list.append(MyDataset.pad_seq(front_click_item[-const.context_feature.seq_len:].copy(), const.context_feature.seq_len, 0))
             if token_type == 1:
                 ts_list.append(ts)
+
+            # --- New Feature Generation ---
+            current_feat_101 = feat.get('101')
+            prev_feat_101 = prev_item_feat.get('101')
+            
+            current_feat_102 = feat.get('102')
+            prev_feat_102 = prev_item_feat.get('102')
+
+            # Use 2 for True, 1 for False, 0 for padding.
+            # Only calculate for items. For users, append default 'False' (1).
+            if token_type == 1:
+                # Value 2 for True, 1 for False.
+                is_repeated_101_list.append(2 if current_feat_101 is not None and current_feat_101 == prev_feat_101 else 1)
+                is_repeated_102_list.append(2 if current_feat_102 is not None and current_feat_102 == prev_feat_102 else 1)
+                prev_feature_101_list.append(prev_feat_101 if prev_feat_101 is not None else 0)
+                prev_item_feat = feat
+            else:
+                is_repeated_101_list.append(1) # Default to False for user tokens
+                is_repeated_102_list.append(1)
+                prev_feature_101_list.append(0) # Padding value
+            # ------------------------------
+
+            # --- Append Statistical Features ---
+            # For user tokens, we append user-level stats. For item tokens, we append item-level stats.
+            if token_type == 2: # User token
+                global_id_pop_100_list.append(0) # Not applicable for users
+                global_val_pop_101_list.append(0) # Not applicable for users
+                user_most_freq_101_list.append(user_most_freq_val_101)
+                user_cross_freq_101_102_list.append(user_cross_freq_val)
+            elif token_type == 1: # Item token
+                item_id_100 = feat.get('100', 0)
+                item_val_101 = feat.get('101', 0)
+                global_id_pop_100_list.append(self.stat_features['global_id_popularity_100'].get(item_id_100, 0))
+                global_val_pop_101_list.append(self.stat_features['global_value_popularity_101'].get(item_val_101, 0))
+                user_most_freq_101_list.append(user_most_freq_val_101) # Use the same user stat for all items in seq
+                user_cross_freq_101_102_list.append(user_cross_freq_val) # Use the same user stat for all items in seq
+            else: # Padding or other token types
+                global_id_pop_100_list.append(0)
+                global_val_pop_101_list.append(0)
+                user_most_freq_101_list.append(0)
+                user_cross_freq_101_102_list.append(0)
+            # -----------------------------------
                 
             if action_type == 1:
                 front_click_item.append(i)
@@ -413,11 +479,37 @@ class MyTestDataset(Dataset):
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
         seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0] *const.context_feature.seq_len)
                 
+        # --- Pad New Feature Lists ---
+        is_repeated_101_list = MyDataset.pad_seq(is_repeated_101_list, const.max_seq_len, 0)
+        is_repeated_102_list = MyDataset.pad_seq(is_repeated_102_list, const.max_seq_len, 0)
+        prev_feature_101_list = MyDataset.pad_seq(prev_feature_101_list, const.max_seq_len, 0)
+        # -----------------------------
+        
+        # --- Pad Statistical Feature Lists ---
+        global_id_pop_100_list = MyDataset.pad_seq(global_id_pop_100_list, const.max_seq_len, 0)
+        global_val_pop_101_list = MyDataset.pad_seq(global_val_pop_101_list, const.max_seq_len, 0)
+        user_most_freq_101_list = MyDataset.pad_seq(user_most_freq_101_list, const.max_seq_len, 0)
+        user_cross_freq_101_102_list = MyDataset.pad_seq(user_cross_freq_101_102_list, const.max_seq_len, 0)
+        # -------------------------------------
+                
         return torch.as_tensor(id_list).int(), \
             torch.as_tensor(token_type_list).int(), \
-                    {**MyDataset.collect_features(feat_list, include_context=False), \
-                     **time_feat,
-                     "210": torch.as_tensor(seq_list, dtype=torch.int32)},\
+                    {
+                        **MyDataset.collect_features(feat_list, include_context=False),
+                        **time_feat,
+                        "210": torch.as_tensor(seq_list, dtype=torch.int32),
+                        # --- Add New Features to Dict ---
+                        "301": torch.as_tensor(is_repeated_101_list, dtype=torch.int32),
+                        "302": torch.as_tensor(is_repeated_102_list, dtype=torch.int32),
+                        "303": torch.as_tensor(prev_feature_101_list, dtype=torch.int32),
+                        # --------------------------------
+                        # --- Add Statistical Features to Dict ---
+                        "401": torch.as_tensor(global_id_pop_100_list, dtype=torch.int32),
+                        "402": torch.as_tensor(global_val_pop_101_list, dtype=torch.int32),
+                        "403": torch.as_tensor(user_most_freq_101_list, dtype=torch.int32),
+                        "404": torch.as_tensor(user_cross_freq_101_102_list, dtype=torch.int32),
+                        # ----------------------------------------
+                    },\
                     user_id
 
 

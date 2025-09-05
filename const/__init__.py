@@ -2,16 +2,22 @@ from .feature import user_feature, item_feature, context_feature
 import os
 from .model import ModelParam
 from pathlib import Path
+os.environ['TRAIN_DATA_PATH'] = '/mnt/hdd/zhangyang/alqq_genrec/TencentGR_1k'
+os.environ['TRAIN_TF_EVENTS_PATH'] = '/mnt/hdd/zhangyang/alqq_genrec/working_dir/tensorboard'
+os.environ['TRAIN_LOG_PATH'] = '/mnt/hdd/zhangyang/alqq_genrec/working_dir/log'
+os.environ['TRAIN_CKPT_PATH'] = '/mnt/hdd/zhangyang/alqq_genrec/working_dir/ckpt'
+os.environ['RUNTIME_SCRIPT_DIR'] = '/mnt/hdd/zhangyang/alqq_genrec'
+os.environ['USER_CACHE_PATH'] = '/mnt/hdd/zhangyang/alqq_genrec/data'
 
     
 
 data_path = os.environ.get('TRAIN_DATA_PATH')  
 print(f"Training data path: {data_path}")
-if data_path is None:
-    print(f"Training data path is not set, switch to Test data path")
-    data_path = os.environ.get('EVAL_DATA_PATH')
-    if data_path is None:
-        raise ValueError("Test data path is not set, please set the EVAL_DATA_PATH environment variable")
+# if data_path is None:
+#     print(f"Training data path is not set, switch to Test data path")
+#     data_path = os.environ.get('EVAL_DATA_PATH')
+#     if data_path is None:
+#         raise ValueError("Test data path is not set, please set the EVAL_DATA_PATH environment variable")
     
 # 数据相关
 mm_emb_dim = {

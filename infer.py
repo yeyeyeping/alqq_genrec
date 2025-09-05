@@ -103,11 +103,11 @@ def infer():
     top10_item_ids = []
     t = time.time()
     print(f"start to predict {len(dataloader) * dataloader.batch_size} user seqs")
-    for seq_id, token_type, feat_dict, user_id in dataloader:
+    for seq_id, token_type, action_type, feat_dict, user_id in dataloader:
         feat_dict = emb_loader.add_mm_emb(seq_id, feat_dict, token_type == 1)
-        seq_id,token_type,feat_dict = seq_id.to(const.device), token_type.to(const.device), to_device(feat_dict)
+        seq_id,token_type,action_type,feat_dict = seq_id.to(const.device), token_type.to(const.device), action_type.to(const.device), to_device(feat_dict)
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
-            next_token_emb = model(seq_id, token_type, feat_dict)
+            next_token_emb = model(seq_id, token_type, action_type, feat_dict)
             next_token_emb = F.normalize(next_token_emb[:,-1,:], dim=-1)
             sim = next_token_emb @ item_features_tensor.T
         _, indices = torch.topk(sim, k = 10)
@@ -120,4 +120,17 @@ def infer():
     print(f"{top10_item_ids[:10]}")
     print(f"{user_id_list[:10]}")
     return top10_item_ids, user_id_list
-   
+
+
+if __name__ == '__main__':
+    top10_item_ids, user_id_list = infer()
+    output_path = os.environ.get('EVAL_OUTPUT_PATH', './result.jsonl')
+    print(f"writing result to {output_path}")
+    with open(output_path, 'w') as f:
+        for user_id, item_ids in zip(user_id_list, top10_item_ids):
+            result = {
+                "user_id": user_id,
+                "item_ids": item_ids
+            }
+            f.write(json.dumps(result) + '\n')
+    print("all done")

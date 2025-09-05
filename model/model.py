@@ -177,12 +177,22 @@ class ContextTower(nn.Module):
         
     def get_context_feature_dim(self):
         dim = 0
+        print("Calculating context feature dimensions:")
         # Add dimensions for all sparse context features defined in const/feature.py
         for feat_id in const.context_feature.sparse_feature_ids:
             dim += const.model_param.embedding_dim[feat_id]
+            print(f"Feature ID {feat_id}: Dimension {const.model_param.embedding_dim[feat_id]}, Cumulative Dimension {dim}")
+        
+        # Add dimensions for array features
+        for feat_id in const.context_feature.array_feature_ids:
+            if feat_id == '210':
+                continue
+            dim += const.model_param.embedding_dim[feat_id]
+            print(f"Adding array feature {feat_id}: {const.model_param.embedding_dim[feat_id]} (Cumulative: {dim})")
         
         # Add dimension for the sequence embedding from feature '210'
         dim += const.model_param.embedding_dim['item_id']
+        print(f"Feature ID 'item_id': Dimension {const.model_param.embedding_dim['item_id']}, Cumulative Dimension {dim}")
         return dim
     
     def setup_embedding_layer(self):
@@ -214,7 +224,11 @@ class ContextTower(nn.Module):
             feat_emb_list.append(user_seq_emb)
             feature_dict.pop('210')
         
+        # Debugging: Print feature shapes before passing to DNN
+        print(f"Context feature shapes before DNN: {[f.shape for f in feat_emb_list]}")
         context_features = torch.cat(feat_emb_list, dim=-1)
+        print(f"Concatenated context_features shape: {context_features.shape}")
+        print(f"DNN input weight shape: {self.dnn[0].weight.shape}")
         return self.dnn(context_features)
 
 class BaselineModel(nn.Module):
@@ -257,8 +271,15 @@ class BaselineModel(nn.Module):
     
     def forward_all_feat(self, seq_id, token_type, feature_dict):
         item_feat = self.forward_item(seq_id, feature_dict, token_type)
+        print(f"Item feature shape: {item_feat.shape}")
+        for feat_id, feat in feature_dict.items():
+            print(f"Feature {feat_id} shape: {feat.shape}")
         user_feat = self.user_tower(seq_id, token_type == 2, feature_dict)
+        print(f"User feature shape: {user_feat.shape}")
+        for feat_id, feat in feature_dict.items():
+            print(f"Feature {feat_id} shape: {feat.shape}")
         context_feat = self.context_tower(feature_dict)
+        print(f"Context feature shape: {context_feat.shape}")
         seq_feat = torch.cat([item_feat, context_feat], dim=-1)
         seq_feat = self.context_dnn(seq_feat)
         

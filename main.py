@@ -1,6 +1,19 @@
 from sampler import sample_neg
 import json
 import os
+# export TRAIN_DATA_PATH=/mnt/hdd/zhangyang/alqq_genrec/TencentGR_1k
+# CUR=$(pwd)
+# export TRAIN_TF_EVENTS_PATH=$CUR/working_dir/tensorboard
+# export TRAIN_LOG_PATH=$CUR/working_dir/log
+# export TRAIN_CKPT_PATH=$CUR/working_dir/ckpt
+# export RUNTIME_SCRIPT_DIR=$CUR
+# export USER_CACHE_PATH=/mnt/hdd/zhangyang/alqq_genrec/data
+os.environ['TRAIN_DATA_PATH'] = '/mnt/hdd/zhangyang/alqq_genrec/TencentGR_1k'
+os.environ['TRAIN_TF_EVENTS_PATH'] = '/mnt/hdd/zhangyang/alqq_genrec/working_dir/tensorboard'
+os.environ['TRAIN_LOG_PATH'] = '/mnt/hdd/zhangyang/alqq_genrec/working_dir/log'
+os.environ['TRAIN_CKPT_PATH'] = '/mnt/hdd/zhangyang/alqq_genrec/working_dir/ckpt'
+os.environ['RUNTIME_SCRIPT_DIR'] = '/mnt/hdd/zhangyang/alqq_genrec'
+os.environ['USER_CACHE_PATH'] = '/mnt/hdd/zhangyang/alqq_genrec/data'
 import time
 from pathlib import Path
 import const
