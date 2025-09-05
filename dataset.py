@@ -7,6 +7,7 @@ from collections import defaultdict
 import torch
 from datetime import datetime
 import pandas as pd
+from torch.nn import functional as F
 
 # from torch.utils.data._utils.collate import default_collate
 # import numpy as np
@@ -34,7 +35,13 @@ class MyDataset(Dataset):
         line = self.seq_file_fp.readline()
         data = json.loads(line)
         return data
-
+    def norm_ts(self, ts: torch.Tensor) -> torch.Tensor:
+        diffs = torch.diff(ts)
+        pos_diffs = diffs[diffs > 0]
+        time_scale = pos_diffs.min() if pos_diffs.numel() > 0 else ts.new_tensor(1.0)
+        norm = torch.round((ts - ts.min() - MIN_TS) / time_scale).to(torch.long) + 1
+        return norm
+    
     def format_user_seq(self, user_sequence):
         user_sequence = sorted(user_sequence, key=lambda x: x[-1])
         ext_user_sequence = []
@@ -66,13 +73,24 @@ class MyDataset(Dataset):
         delta_scaled = torch.log1p(decay).int() + 1
         
         delta_scaled = torch.clamp(delta_scaled, max=const.model_param.max_decay)
+        personal_diff = self.norm_ts(ts_tensor / 60 / 60)
+        time_matrix = torch.clamp(torch.abs(personal_diff[None] - personal_diff[:, None]), 
+                                  0, 
+                                  const.model_param.rel_time_num_buckets)
+        
+        L = time_matrix.shape[0]
+        pad_len = const.max_seq_len - L
+        padded_time_matrix = F.pad(time_matrix, (pad_len, 0, pad_len, 0))  # (left, right, top, bottom)
+
+        padded_time_matrix = padded_time_matrix.to(torch.long)
         out_time_feat = {
             "201": MyDataset.pad_seq(log_gap, const.max_seq_len, 0),
             "202": MyDataset.pad_seq(weekdays, const.max_seq_len, 0),
             "203": MyDataset.pad_seq(hours, const.max_seq_len, 0),
             "204": MyDataset.pad_seq(months, const.max_seq_len, 0),
             "205": MyDataset.pad_seq(days, const.max_seq_len, 0),
-            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len, 0)
+            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len, 0),
+            "500": padded_time_matrix # 时间矩阵用于hstu
             
         }
         return out_time_feat

@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import const
 from torch import nn
 from .atten import AttentionDecoder
+from .hstu import HstuAttentionDecoder
 
 class UserTower(nn.Module):
     def __init__(self):
@@ -48,17 +49,17 @@ class UserTower(nn.Module):
         
         for feat_id in const.user_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
-            # feature_dict.pop(feat_id)
+            feature_dict.pop(feat_id)
         
         for feat_id in const.user_feature.array_feature_ids:
             emb = self.sparse_emb[feat_id](feature_dict[feat_id])
             # 对数组特征进行求和池化，注意不能除以mask.sum(-1, keepdim=True)，因为mask可能为0
             feat_emb_list.append(emb.sum(-2))
-            # feature_dict.pop(feat_id)
+            feature_dict.pop(feat_id)
         
         for feat_id in const.user_feature.dense_feature_ids:
             feat_emb_list.append(feature_dict[feat_id].unsqueeze(-1))
-            # feature_dict.pop(feat_id)
+            feature_dict.pop(feat_id)
         
         
         user_features = torch.cat(feat_emb_list, dim=-1)
@@ -117,15 +118,15 @@ class ItemTower(nn.Module):
         
         for feat_id in const.item_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
-            # feature_dict.pop(feat_id)
+            feature_dict.pop(feat_id)
         
         for feat_id in const.item_feature.dense_feature_ids:
             feat_emb_list.append(feature_dict[feat_id].unsqueeze(-1))
-            # feature_dict.pop(feat_id)
+            feature_dict.pop(feat_id)
             
         for feat_id in const.item_feature.mm_emb_feature_ids:
             feat_emb_list.append(F.dropout(self.mm_liner[feat_id](feature_dict[feat_id]), p=0.4))
-            # feature_dict.pop(feat_id)
+            feature_dict.pop(feat_id)
         item_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(item_features)
 
@@ -159,7 +160,7 @@ class ContextTower(nn.Module):
         feat_emb_list = []
         for feat_id in const.context_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
-            # feature_dict.pop(feat_id)
+            feature_dict.pop(feat_id)
 
         mask = (feature_dict['210'] != 0).long()
         user_seq_emb = torch.sum(self.item_embedding(feature_dict['210']), dim=-2)
@@ -168,7 +169,7 @@ class ContextTower(nn.Module):
                                    user_seq_emb / mask.sum(-1).unsqueeze(-1).clamp(min=1), 
                                    torch.zeros_like(user_seq_emb))
         feat_emb_list.append(user_seq_emb)
-        # feature_dict.pop('210')
+        feature_dict.pop('210')
         
         context_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(context_features)
@@ -188,20 +189,25 @@ class BaselineModel(nn.Module):
         
         self.pos_embedding = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
         self.emb_dropout = nn.Dropout(const.model_param.dropout)
-        self.casual_attention_layers = AttentionDecoder(const.model_param.num_blocks, 
+        self.casual_attention_layers = HstuAttentionDecoder(const.model_param.num_blocks, 
                                                         const.model_param.hidden_units,
                                                         const.model_param.num_heads,
                                                         const.model_param.dropout,
-                                                        const.model_param.norm_first)
+                                                        const.model_param.norm_first,
+                                                        const.model_param.rel_time_num_buckets,
+                                                        const.model_param.rel_time_dim,
+                                                        const.model_param.rel_pos_num_buckets,
+                                                        const.model_param.rel_pos_bucket_dim,
+                                                        const.model_param.rel_pos_max_distance)
         
-    def add_pos_embedding(self, seqs_id, emb, ):
-        # emb *= const.model_param.hidden_units ** 0.5
-        # valid_mask = (seqs_id != 0).long()
-        # poss = torch.cumsum(valid_mask, dim=1)
-        # poss = poss * valid_mask
-        # emb += self.pos_embedding(poss)
-        emb = self.emb_dropout(emb)
-        return emb
+    # def add_pos_embedding(self, seqs_id, emb, ):
+    #     # emb *= const.model_param.hidden_units ** 0.5
+    #     # valid_mask = (seqs_id != 0).long()
+    #     # poss = torch.cumsum(valid_mask, dim=1)
+    #     # poss = poss * valid_mask
+    #     # emb += self.pos_embedding(poss)
+    #     emb = self.emb_dropout(emb)
+    #     return emb
     
     
     
@@ -214,7 +220,7 @@ class BaselineModel(nn.Module):
         return self.merge_dnn(seq_feat)
     
         
-    def forward(self, user_id, user_feat, input_ids, input_feat, context_feat):
+    def forward(self, user_id, user_feat, input_ids, input_feat, context_feat, time_matrix):
         emb = self.forward_all_feat(user_id, user_feat,input_ids, input_feat, context_feat)
         feat = self.emb_dropout(emb)
         
@@ -224,6 +230,5 @@ class BaselineModel(nn.Module):
         attention_mask_tril = torch.tril(ones_matrix)
         attention_mask_pad = (input_ids != 0)
         attention_mask = attention_mask_tril.unsqueeze(0) & attention_mask_pad.unsqueeze(1)
-        
-        log_feats = self.casual_attention_layers(feat, attention_mask)
+        log_feats = self.casual_attention_layers(feat, time_matrix[:,:-1,:-1], attention_mask)
         return log_feats

@@ -125,7 +125,7 @@ class AttentionDecoder(nn.Module):
         
         self.last_layernorm = torch.nn.RMSNorm(hidden_units, eps=1e-8)
         
-    def forward(self, seqs, attention_mask):
+    def forward(self, seqs,time_matrix, attention_mask):
         for i in range(len(self.attention_layers)):
             if self.norm_first:
                 x = self.attention_layernorms[i](seqs)

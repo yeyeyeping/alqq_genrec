@@ -55,8 +55,8 @@ def to_device(batch):
 def make_input_and_label(seq_id, action_type, feat, context_feat,shift=1):
     input_ids = seq_id[:,:-shift]
     input_action_type = action_type[:,:-shift]
-    input_feat = {k:v[:,:-shift] for k,v in feat.items()}
-    context_feat = {k:v[:,:-shift] for k,v in context_feat.items()}
+    input_feat = {k:feat[k][:,:-shift] for k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
+    context_feat = {k:context_feat[k][:,:-shift] for k in const.context_feature.all_feature_ids}
     
     label_ids = seq_id[:,shift:].clone()
     label_action_type = action_type[:,shift:].clone()
@@ -92,13 +92,27 @@ def train_one_step(epoch, batch, emb_loader, loader, model:BaselineModel):
             shift = 1
         else:
             shift = random.randint(1, 5)
-        input_ids, input_action_type, input_feat, context_feat,next_ids, next_action_type, next_feat \
-                    = make_input_and_label(item_id, action_type, item_feat, context_feat)
-        next_token_emb = model(user_id, user_feat, input_ids, input_feat, context_feat)
+        
+        time_matrix = context_feat['500']
+        context_feat.pop('500')
+        
+        input_ids, input_action_type, input_feat, ctx_feature,next_ids, next_action_type, next_feat \
+                    = make_input_and_label(item_id, action_type, item_feat, context_feat,shift=shift)
+        
+        # if len(item_feat) != len(input_feat) or len(context_feat) != len(ctx_feature):
+        #     raise ValueError(f"item_feat-input_feat, context_feat-ctx_feature should have the same length, but got: {len(item_feat)}, {len(input_feat)}, {len(context_feat)}, {len(ctx_feature)}")
+        
+        
+        next_token_emb = model(user_id, user_feat, input_ids, input_feat, ctx_feature,time_matrix)
+        
         
         neg_emb = model.item_tower(neg_id, neg_feat)
         pos_emb = model.item_tower(next_ids, next_feat)
 
+
+        # if len(input_feat) != 0 or len(ctx_feature) != 0 or len(next_feat) != 0 or len(user_feat) != 0:
+            # raise ValueError(f"input_feat, context_feat, next_feat, user_feat should be empty, but got: {input_feat.keys()}, {context_feat.keys()}, {next_feat.keys()}, {user_feat.keys()}")
+        
         indices = torch.where(next_ids != 0) 
         
         anchor_emb = F.normalize(next_token_emb[indices[0], indices[1],:],dim=-1)

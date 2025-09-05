@@ -2,6 +2,7 @@ from utils import read_pickle
 class ModelParam:
     def __init__(self,indexer_file):
         self.embedding_table_size = self.read_feature_size(indexer_file)
+        
         self.max_decay = 20
         self.max_diff = 20
         self.embedding_table_size["201"] = self.max_diff
@@ -10,6 +11,14 @@ class ModelParam:
         self.embedding_table_size["204"] = 13
         self.embedding_table_size["205"] = 32
         self.embedding_table_size["206"] = self.max_decay
+        
+        # hstu配置
+        self.rel_time_num_buckets = 4096
+        self.rel_time_dim = 16
+        
+        self.rel_pos_num_buckets = 32
+        self.rel_pos_max_distance = 128
+        self.rel_pos_bucket_dim = 16
         
         self.embedding_dim = {
             "user_id":64,
