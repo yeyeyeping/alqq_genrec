@@ -41,7 +41,7 @@ class UserTower(nn.Module):
 
         
     def forward(self, seq_id, feature_dict):
-        id_embedding = self.sparse_emb['user_id'](seq_id)
+        id_embedding = F.dropout(self.sparse_emb['user_id'](seq_id), p=0.4)
         
         feat_emb_list = [id_embedding, ]
         
@@ -111,7 +111,7 @@ class ItemTower(nn.Module):
         return emb_dict
         
     def forward(self, seq_id, feature_dict):
-        id_embedding = self.sparse_emb['item_id'](seq_id)
+        id_embedding = F.dropout(self.sparse_emb['item_id'](seq_id), p=0.4)
         
         feat_emb_list = [id_embedding, ]
         
@@ -124,7 +124,7 @@ class ItemTower(nn.Module):
             # feature_dict.pop(feat_id)
             
         for feat_id in const.item_feature.mm_emb_feature_ids:
-            feat_emb_list.append(F.dropout(self.mm_liner[feat_id](feature_dict[feat_id]), p=0.4))
+            feat_emb_list.append(self.mm_liner[feat_id](feature_dict[feat_id]))
             # feature_dict.pop(feat_id)
         item_features = torch.cat(feat_emb_list, dim=-1)
         return self.dnn(item_features)
@@ -191,7 +191,7 @@ class BaselineModel(nn.Module):
         self.casual_attention_layers = AttentionDecoder(const.model_param.num_blocks, 
                                                         const.model_param.hidden_units,
                                                         const.model_param.num_heads,
-                                                        const.model_param.dropout,
+                                                        0,
                                                         const.model_param.norm_first)
         
     def add_pos_embedding(self, seqs_id, emb, ):

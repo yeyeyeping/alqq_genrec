@@ -31,11 +31,17 @@ num_epochs = 10
 warmup_t = 2000
 lr = 3e-3
 seed = 3407
-sampling_strategy = "random" # hot
-hot_exp_ratio = 0.2
-hot_click_ratio = 0.05
+# sampling_strategy = "random"
+# sampling_strategy = "hot" # hot
+# hot_exp_ratio = 0.2
+# hot_click_ratio = 0.05
+sampling_strategy = "popularity"
+uniform_sampling_ratio = 0.7
+num_sampled_once = 256
+penalty_ratio = 0.5
+
 neg_sample_num = 30000
-temperature = 0.04
+temperature = 0.03
 grad_norm = 1.0
 # 推理相关
 infer_batch_size = 512

@@ -41,9 +41,11 @@ def apply_model_init(model:BaselineModel):
     
     for k in model.item_tower.sparse_emb:
         model.item_tower.sparse_emb[k].weight.data[0, :] = 0
-    
     model.pos_embedding.weight.data[0, :] = 0
-
+        
+    torch.nn.init.constant_(model.user_tower.sparse_emb['user_id'].weight, 0)
+    torch.nn.init.constant_(model.item_tower.sparse_emb['item_id'].weight, 0)
+    
 
 def to_device(batch):
     for k,v in batch.items():

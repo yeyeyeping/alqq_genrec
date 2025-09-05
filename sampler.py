@@ -87,6 +87,74 @@ class HotNegDataset(Dataset):
                                                                                include_user=False, 
                                                                                include_context=False)
 
+class PopularityNegDataset(Dataset):
+    def __init__(self, 
+                 data_path, 
+                 uniform_sampling_ratio=0.7,
+                 num_sampled_once=256,
+                 penalty_ratio=0.5):
+        super().__init__()
+        self.data_path = Path(data_path)
+        self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
+        
+        self.penalty_ratio = penalty_ratio
+        self.num_sampled_once = num_sampled_once
+        
+        self.num_uniform_sampling = int(self.num_sampled_once * uniform_sampling_ratio)
+        self.num_popularity_sampling = self.num_sampled_once - self.num_uniform_sampling
+        
+        
+        
+        self.item_id_list = list(range(1, len(self.item_feat_dict) + 1))
+        
+        item_expression_num,item_click_num = self._load_data_info()
+        self.item_popularity = self.calculate_popularity(item_expression_num, item_click_num)
+        
+        
+        
+    
+    def calculate_popularity(self,item_expression_num, item_click_num):
+        popularity = {}
+        for k in self.item_id_list:
+            
+            if item_expression_num.get(k, 0) == 0:
+                popularity[k] = 1e-5
+            else:
+                popularity[k] = item_click_num.get(k, 0) / item_expression_num.get(k, 0)
+                    
+        return popularity.values()
+        
+            
+    def __len__(self):
+        return 0x7FFFFFFF
+        
+    def _load_data_info(self):
+        cache_path = Path(os.environ.get('USER_CACHE_PATH'))
+        
+        with open(cache_path/"data_info.pkl", "rb") as f:
+            data_info = pickle.load(f)
+        return data_info['item_expression_num'], data_info['item_click_num']
+            
+    def __getitem__(self, index):
+        neg_item_reid_list = []
+        neg_item_feat_list = []
+        
+        
+        uniform_sampling_ids = random.choices(self.item_id_list, k=self.num_uniform_sampling)
+        popularity_sampling_ids = random.choices(self.item_id_list, self.item_popularity, k=self.num_popularity_sampling)
+        sampled_ids = sorted(uniform_sampling_ids + popularity_sampling_ids)
+        
+        for i in sampled_ids:
+            
+            neg_item_reid_list.append(i)
+            neg_item_feat_list.append(self.item_feat_dict[str(i)])
+            
+            
+        return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
+                                                                               include_user=False, 
+                                                                               include_context=False)
+        
+
 def collate_fn(batch):
     neg_item_reid_list, neg_item_feat_list = zip(*batch)
     reid = torch.cat(neg_item_reid_list)
@@ -103,6 +171,11 @@ def sample_neg():
         dataset = NegDataset(const.data_path)
     elif const.sampling_strategy == 'hot':
         dataset = HotNegDataset(const.data_path, const.hot_exp_ratio, const.hot_click_ratio)
+    elif const.sampling_strategy == 'popularity':
+        dataset = PopularityNegDataset(const.data_path, 
+                                       const.uniform_sampling_ratio,
+                                       const.num_sampled_once, 
+                                       const.penalty_ratio)
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
     loader = DataLoader(dataset, 
