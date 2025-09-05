@@ -18,6 +18,7 @@ from utils import seed_everything, seed_worker
 from loss import info_nce_loss,l2_reg_loss
 from mm_emb_loader import Memorymm81Embloader
 from torch.optim import SGD
+import random
 def build_dataloader(dataset, batch_size, num_workers, shuffle):
     return DataLoader(
         dataset, 
@@ -90,17 +91,37 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         
         input_ids, input_action_type, input_feat, context_feat,next_ids, next_action_type, next_feat \
                     = make_input_and_label(item_id, action_type, item_feat, context_feat)
-        next_token_emb = model(user_id, user_feat, input_ids, input_feat, context_feat)
+        next_token_emb, short_time_emb, long_time_emb = model(user_id, user_feat, input_ids, input_feat, context_feat)
         
         neg_emb = model.item_tower(neg_id, neg_feat)
         pos_emb = model.item_tower(next_ids, next_feat)
 
         indices = torch.where(next_ids != 0) 
         
-        anchor_emb = F.normalize(next_token_emb[indices[0], indices[1],:],dim=-1)
-        pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
+        anchor_emb_next = F.normalize(next_token_emb[indices[0], indices[1],:],dim=-1)
+        pos_emb_next = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
         neg_emb = F.normalize(neg_emb, dim=-1)
-        loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, return_logits=True)
+        next_loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb_next, pos_emb_next, neg_emb, const.temperature, return_logits=True)
+        
+        shift = random.randint(2, 8)
+        short_time_emb = short_time_emb[:, :-shift]
+        pos_emb_short = pos_emb[:, shift:]
+        indices_short = torch.where(next_ids[:,shift:] != 0) 
+        
+        anchor_emb_short = F.normalize(short_time_emb[indices_short[0], indices_short[1],:],dim=-1)
+        pos_emb_short = F.normalize(pos_emb_short[indices_short[0], indices_short[1],:],dim=-1)
+        short_loss, _, _ = info_nce_loss(anchor_emb_short, pos_emb_short, neg_emb, const.temperature)
+        
+        long_shift = random.randint(6, 20)
+        long_time_emb = long_time_emb[:, :-long_shift]
+        pos_emb_long = pos_emb[:, long_shift:]
+        indices_long = torch.where(next_ids[:,long_shift:] != 0) 
+        
+        anchor_emb_long = F.normalize(long_time_emb[indices_long[0], indices_long[1],:],dim=-1)
+        pos_emb_long = F.normalize(pos_emb_long[indices_long[0], indices_long[1],:],dim=-1)
+        long_loss, _, _ = info_nce_loss(anchor_emb_long, pos_emb_long, neg_emb, const.temperature)
+        
+        loss = next_loss + 0.5 * short_loss + 0.2 * long_loss
         
         loss += l2_reg_loss(model,const.l2_alpha)
         

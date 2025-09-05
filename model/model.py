@@ -193,7 +193,7 @@ class BaselineModel(nn.Module):
                                                         const.model_param.num_heads,
                                                         const.model_param.dropout,
                                                         const.model_param.norm_first)
-        
+        self.multi_step_linear = nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units * 3)
     def add_pos_embedding(self, seqs_id, emb, ):
         # emb *= const.model_param.hidden_units ** 0.5
         # valid_mask = (seqs_id != 0).long()
@@ -226,4 +226,5 @@ class BaselineModel(nn.Module):
         attention_mask = attention_mask_tril.unsqueeze(0) & attention_mask_pad.unsqueeze(1)
         
         log_feats = self.casual_attention_layers(feat, attention_mask)
-        return log_feats
+        log_feats = self.multi_step_linear(log_feats)
+        return log_feats.split(const.model_param.hidden_units, dim=-1)
