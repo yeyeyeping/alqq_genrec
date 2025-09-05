@@ -230,5 +230,5 @@ class BaselineModel(nn.Module):
         attention_mask_tril = torch.tril(ones_matrix)
         attention_mask_pad = (input_ids != 0)
         attention_mask = attention_mask_tril.unsqueeze(0) & attention_mask_pad.unsqueeze(1)
-        log_feats = self.casual_attention_layers(feat, time_matrix[:,:-1,:-1], attention_mask)
+        log_feats = self.casual_attention_layers(feat, time_matrix, attention_mask)
         return log_feats
