@@ -180,7 +180,7 @@ if __name__ == '__main__':
     # global dataset
     seed_everything(const.seed)
     
-    dataset = MyDataset(const.data_path)
+    dataset = MyDataset(const.data_path, const.statistical_features)
     # train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
     train_loader = build_dataloader(dataset, const.batch_size, const.num_workers, True)
     # valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)
@@ -231,30 +231,30 @@ if __name__ == '__main__':
             scaler.step(optimizer)
             scaler.update()
             scheduler.step_update(global_step)
-            
-            
-            loss = loss.item()
-            log_json = json.dumps(
-                {
-                    'global_step': f"{global_step}/{total_step}", 
-                    "grad_norm":grad_norm,
-                    'loss': loss, 
-                    "top1_correct":top1_correct,
-                    "top10_correct":top10_correct,
-                    "entropy":entropy,
-                    "sim_pos":pos_sim,
-                    "sim_neg":neg_sim,
-                    "num_neg_samples":num_neg,
-                    'epoch': epoch, 
-                    'lr': optimizer.param_groups[0]['lr'],
-                    'time': time.perf_counter() - st_time
-                }
-            )
-            
-            log_file.write(log_json + '\n')
-            log_file.flush()
-            
-            print("[TRAIN] " + log_json)
+
+            if step % 200 == 0:
+                loss = loss.item()
+                log_json = json.dumps(
+                    {
+                        'global_step': f"{global_step}/{total_step}", 
+                        "grad_norm":grad_norm,
+                        'loss': loss, 
+                        "top1_correct":top1_correct,
+                        "top10_correct":top10_correct,
+                        "entropy":entropy,
+                        "sim_pos":pos_sim,
+                        "sim_neg":neg_sim,
+                        "num_neg_samples":num_neg,
+                        'epoch': epoch, 
+                        'lr': optimizer.param_groups[0]['lr'],
+                        'time': time.perf_counter() - st_time
+                    }
+                )
+                
+                log_file.write(log_json + '\n')
+                log_file.flush()
+                print("[TRAIN] " + log_json)
+
             writer.add_scalar('train/sim_pos', pos_sim, global_step)
             writer.add_scalar('train/sim_neg', neg_sim, global_step)
             writer.add_scalar('train/sim_gap', pos_sim - neg_sim, global_step)
@@ -312,6 +312,6 @@ if __name__ == '__main__':
         
         gc.collect()
     print("Done")
-    print(const.__dict__)
+    # print(const.__dict__)
     writer.close()
     log_file.close()

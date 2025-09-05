@@ -3,7 +3,7 @@ def pad_array(feat_value, max_len):
     return feat_value + [0] * pad_len
 class UserFeature:
     def __init__(self):
-        self.sparse_feature_ids = ('103', '104', '105', '109')
+        self.sparse_feature_ids = ('103', '104', '105', '109', '303', '304')
         self.dense_feature_ids = []
         self.array_feature_ids = ('106', '107', '108', '110')
         self.all_feature_ids = sorted(list(self.sparse_feature_ids) + list(self.dense_feature_ids) + list(self.array_feature_ids))
@@ -49,6 +49,8 @@ class  ItemFeature:
             '120',
             # '121',
             '122',
+            '301',
+            '302',
         )
         self.dense_feature_ids = ()
         self.mm_emb_feature_ids = ("81", )

@@ -14,11 +14,12 @@ import pandas as pd
 MIN_TS = 1728921670
 MAX_TS = 1748907455
 class MyDataset(Dataset):
-    def __init__(self, data_path): 
+    def __init__(self, data_path, statistical_features):
         super().__init__()
         self.data_path = Path(data_path)
         self.seq_offsets = self.load_offset()
         self.seq_file_fp = None
+        self.statistical_features = statistical_features
     
     def load_offset(self):
         return read_pickle(self.data_path/'seq_offsets.pkl')
@@ -162,6 +163,8 @@ class MyDataset(Dataset):
         front_click_item = set()
         seq_list = []
         for i, feat, action_type, ts in ext_user_seq:
+            feat['301'] = self.statistical_features['global_id_popularity_100'].get(feat.get('100'), 0)
+            feat['302'] = self.statistical_features['global_value_popularity_101'].get(feat.get('101'), 0)
             item_id_list.append(i)
             action_type_list.append(action_type if action_type is not None else 0)
             feat_list.append(feat)
@@ -199,9 +202,12 @@ class MyDataset(Dataset):
         user_seq = self._load_user_data(index)
         user_id, user_feat, ext_user_seq = self.format_user_seq(user_seq)
         
-        user_feat = MyDataset.fill_feature(user_feat, 
-                                           include_user=True, 
-                                           include_item=False, 
+        user_feat['303'] = self.statistical_features['user_most_freq_value_101'].get(user_id, 0)
+        user_feat['304'] = self.statistical_features['user_cross_freq_101_102'].get(user_id, 0)
+        
+        user_feat = MyDataset.fill_feature(user_feat,
+                                           include_user=True,
+                                           include_item=False,
                                            include_context=False)
         
         action_type_list, item_id_list, item_feat_dict, context_feat = self.seq2feat(ext_user_seq)
@@ -212,8 +218,8 @@ class MyDataset(Dataset):
 
         
 class MyTestDataset(MyDataset):
-    def __init__(self, data_path):
-        super().__init__(data_path)
+    def __init__(self, data_path, statistical_features):
+        super().__init__(data_path, statistical_features)
         self.indexer = read_pickle(self.data_path / 'indexer.pkl')
         self.indexer_u_rev = {v: k for k, v in self.indexer['u'].items()}
         
@@ -287,10 +293,13 @@ class MyTestDataset(MyDataset):
     def __getitem__(self, uid):
         user_sequence = self._load_user_data(uid)
         ext_user_sequence, str_user_id, user_id, user_feat = self.format_user_seq(user_sequence)
+        
+        user_feat['303'] = self.statistical_features['user_most_freq_value_101'].get(user_id, 0)
+        user_feat['304'] = self.statistical_features['user_cross_freq_101_102'].get(user_id, 0)
                
-        user_feat = MyDataset.fill_feature(user_feat, 
-                                           include_user=True, 
-                                           include_item=False, 
+        user_feat = MyDataset.fill_feature(user_feat,
+                                           include_user=True,
+                                           include_item=False,
                                            include_context=False)
         action_type_list, item_id_list, item_feat_dict, context_feat = self.seq2feat(ext_user_sequence)
         

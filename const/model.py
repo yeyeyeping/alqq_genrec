@@ -1,6 +1,6 @@
 from utils import read_pickle
 class ModelParam:
-    def __init__(self,indexer_file):
+    def __init__(self,indexer_file, statistical_features):
         self.embedding_table_size = self.read_feature_size(indexer_file)
         self.max_decay = 20
         self.max_diff = 20
@@ -10,6 +10,10 @@ class ModelParam:
         self.embedding_table_size["204"] = 13
         self.embedding_table_size["205"] = 32
         self.embedding_table_size["206"] = self.max_decay
+        self.embedding_table_size["301"] = 50 # global_id_popularity_100_bucketized
+        self.embedding_table_size["302"] = 50 # global_value_popularity_101_bucketized
+        self.embedding_table_size["303"] = self.embedding_table_size['101'] # user_most_freq_value_101
+        self.embedding_table_size["304"] = len(statistical_features['cross_freq_101_102_indexer']) + 1 # user_cross_freq_101_102
         
         self.embedding_dim = {
             "user_id":64,
@@ -53,6 +57,10 @@ class ModelParam:
             "204": 16, # month
             "205": 16, # day   
             "206": 16, # decay
+            "301": 16,
+            "302": 16,
+            "303": 16,
+            "304": 16,
         }
         self.user_dnn_units = 128
         self.item_dnn_units = 128

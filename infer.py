@@ -1,7 +1,8 @@
 import os
-os.system(f"cd {os.environ.get('EVAL_INFER_PATH')};unzip submit_infer.zip; cp -r tmp_infer/* .")
+# os.system(f"cd {os.environ.get('EVAL_INFER_PATH')};unzip submit_infer.zip; cp -r tmp_infer/* .")
 import json
 from pathlib import Path
+from const.statistical_features import get_statistical_features
 from model import BaselineModel
 from dataset import MyTestDataset,MyDataset
 from torch.utils.data import DataLoader
@@ -69,8 +70,10 @@ def infer():
     torch.set_grad_enabled(False)
     
     data_path = os.environ.get('EVAL_DATA_PATH')
+    cache_dir = os.environ.get('CACHE_DIR', './cache')
+    statistical_features = get_statistical_features(data_path, cache_dir)
     # 加载数据
-    test_dataset = MyTestDataset(data_path=data_path)
+    test_dataset = MyTestDataset(data_path=data_path, statistical_features=statistical_features)
     dataloader = DataLoader(test_dataset,
                             batch_size=4096,  # 使用正确的512 
                             num_workers=16, 
@@ -128,4 +131,7 @@ def infer():
     print(f"{top10_item_ids[:10]}")
     print(f"{user_id_list[:10]}")
     return top10_item_ids, user_id_list
+
+if __name__ == "__main__":
+    infer()
    

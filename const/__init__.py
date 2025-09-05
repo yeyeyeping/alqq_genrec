@@ -2,8 +2,8 @@ from .feature import user_feature, item_feature, context_feature
 import os
 from .model import ModelParam
 from pathlib import Path
+from .statistical_features import get_statistical_features
 
-    
 
 data_path = os.environ.get('TRAIN_DATA_PATH')
 if data_path is None:
@@ -11,6 +11,9 @@ if data_path is None:
     data_path = os.environ.get('EVAL_DATA_PATH')
     if data_path is None:
         raise ValueError("Test data path is not set, please set the EVAL_DATA_PATH environment variable")
+
+cache_dir = os.environ.get('USER_CACHE_PATH', './cache')
+statistical_features = get_statistical_features(data_path, cache_dir)
     
 # 数据相关
 mm_emb_dim = {
@@ -25,13 +28,13 @@ max_seq_len = 101
 # 训练相关
 l2_alpha = 1e-7
 device = "cuda"
-batch_size = 180
+batch_size = 128    
 num_workers = 8
 num_epochs = 10
 warmup_t = 2000
 lr = 3e-3
 seed = 3407
-sampling_strategy = "hot" # hot
+sampling_strategy = "random" # hot
 hot_exp_ratio = 0.2
 hot_click_ratio = 0.05
 neg_sample_num = 30000
@@ -40,9 +43,4 @@ grad_norm = 1.0
 # 推理相关
 infer_batch_size = 512
 # 模型参数
-model_param = ModelParam(Path(data_path)/"indexer.pkl")
-        
-
-
-
-
+model_param = ModelParam(Path(data_path)/"indexer.pkl", statistical_features)
