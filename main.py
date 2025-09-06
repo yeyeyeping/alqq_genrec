@@ -91,7 +91,8 @@ def train_one_step(epoch, batch, emb_loader, loader, model:BaselineModel):
         # if epoch < 5:
         #     shift = 1
         # else:
-        shift = random.randint(1, 5)
+        # shift = random.randint(1, 5)
+        shift = 1
         
         time_matrix = context_feat['500']
         time_matrix = time_matrix[:,:-shift,:-shift]

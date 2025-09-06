@@ -113,9 +113,9 @@ def infer():
         item_feat = emb_loader.add_mm_emb(item_id, item_feat)
         user_id,item_id = user_id.to(const.device), item_id.to(const.device)
         user_feat, item_feat,context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
-        
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
-            next_token_emb = model(user_id, user_feat,item_id, item_feat, context_feat)
+            time_matrix = context_feat['500']
+            next_token_emb = model(user_id, user_feat,item_id, item_feat, context_feat,time_matrix)
             next_token_emb = F.normalize(next_token_emb[:,-1,:], dim=-1)
             sim = next_token_emb @ item_features_tensor.T
         
