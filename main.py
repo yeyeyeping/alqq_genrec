@@ -106,7 +106,7 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
                                                        const.temperature, 
                                                        return_logits=True)
         
-        loss += l2_reg_loss(model,const.l2_alpha)
+        # loss += l2_reg_loss(model,const.l2_alpha)
         
         with torch.no_grad():
             # prob = logits.softmax(dim=-1)
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     apply_model_init(model)
 
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=const.lr, betas=(0.9, 0.99))
+    optimizer = torch.optim.AdamW(model.parameters(), lr=const.lr, betas=(0.9, 0.98))
     scheduler = CosineLRScheduler(
                         optimizer, 
                         t_initial=max(const.num_epochs * len(train_loader) - 4000, 4000),  

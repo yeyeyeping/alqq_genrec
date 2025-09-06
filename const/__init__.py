@@ -43,7 +43,7 @@ penalty_ratio = 0.5
 num_sampled_once = 300
 sampling_factor = 100
 refresh_interval = 1000
-neg_sample_num = 30000
+neg_sample_num = 15000
 
 temperature = 0.04
 grad_norm = 1.0
