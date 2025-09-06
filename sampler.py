@@ -3,12 +3,11 @@ from dataset import MyDataset
 import torch
 from pathlib import Path
 import random
-import multiprocessing as mp
 from torch.utils.data import Dataset,DataLoader
 import const
 import os
 import pickle
-from collections import defaultdict
+import time
 class NegDataset(Dataset):
     def __init__(self, data_path):
         self.data_path = Path(data_path)
@@ -21,7 +20,7 @@ class NegDataset(Dataset):
     def __getitem__(self, index):
         neg_item_reid_list = []
         neg_item_feat_list = []
-        for i in random.sample(self.item_num, 256):
+        for i in random.sample(self.item_num, const.num_sampled_once):
             neg_item_reid_list.append(i)
             neg_item_feat_list.append(self.item_feat_dict[str(i)])
             
@@ -69,7 +68,7 @@ class HotNegDataset(Dataset):
     def __getitem__(self, index):
         neg_item_reid_list = []
         neg_item_feat_list = []
-        for i in range(256):
+        for i in range(const.num_sampled_once):
             sampled_id = 0
             p = random.random()
             if p < self.hot_click_ratio:
@@ -103,9 +102,14 @@ class PopularityNegDataset(Dataset):
         self.num_uniform_sampling = int(self.num_sampled_once * uniform_sampling_ratio)
         self.num_popularity_sampling = self.num_sampled_once - self.num_uniform_sampling
         
-        
-        item_expression_num,item_click_num = self._load_data_info()
+        item_expression_num, item_click_num = self._load_data_info()
         self.item_popularity = self.calculate_popularity(item_expression_num, item_click_num)
+        # Pre-compute a large sampling pool based on popularity for faster sampling
+        self.popularity_sampling_pool_size = 1000000  # Size of pre-computed pool
+        print(f"Pre-computing popularity sampling pool of size {self.popularity_sampling_pool_size}...")
+        self.popularity_sampling_pool = torch.multinomial(self.item_popularity, self.popularity_sampling_pool_size, replacement=True) + 1
+        print("Popularity sampling pool pre-computed.")
+        self.pool_index = 0
         
     def calculate_popularity(self,item_expression_num, item_click_num):
         popularity = {}
@@ -136,20 +140,22 @@ class PopularityNegDataset(Dataset):
         neg_item_feat_list = []
         
         uniform_sampling_ids = torch.randint(1, len(self.item_feat_dict) + 1, size=(self.num_uniform_sampling,))
-        popularity_sampling_ids = torch.multinomial(self.item_popularity, self.num_popularity_sampling) + 1
+        # Sample from pre-computed popularity pool instead of direct multinomial sampling
+        if self.pool_index + self.num_popularity_sampling >= self.popularity_sampling_pool_size:
+            self.pool_index = 0  # Reset to start if we reach the end of the pool
+        popularity_sampling_ids = self.popularity_sampling_pool[self.pool_index:self.pool_index + self.num_popularity_sampling]
+        self.pool_index += self.num_popularity_sampling
         
         sampled_ids = torch.cat([uniform_sampling_ids, popularity_sampling_ids]).sort().values
-        for i in sampled_ids:
+        for sampled_id in sampled_ids:
             
-            neg_item_reid_list.append(i)
-            neg_item_feat_list.append(self.item_feat_dict[str(i.item())])
+            neg_item_reid_list.append(sampled_id)
+            neg_item_feat_list.append(self.item_feat_dict[str(sampled_id.item())])
             
             
         return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
                                                                                include_user=False, 
                                                                                include_context=False)
-        
-
 def collate_fn(batch):
     neg_item_reid_list, neg_item_feat_list = zip(*batch)
     reid = torch.cat(neg_item_reid_list)
@@ -159,6 +165,72 @@ def collate_fn(batch):
         out_dict[k] = feat
 
     return reid, out_dict
+
+class SampledPool:
+    def __init__(self, dataset):
+        self.dataset = dataset
+        self.iter_count = 0
+        self.pool_size = const.neg_sample_num * const.sampling_factor
+        
+        # Pre-allocate tensors with fixed size for efficiency
+        self.neg_id_pool = torch.empty(size=(self.pool_size,), dtype=torch.int32)
+        self.neg_feat_pool = {
+            k: torch.empty(size=(self.pool_size,), dtype=torch.int32) for k in const.item_feature.all_feature_ids
+        }
+        self.refresh_pool()
+        self.data_idx = 0
+        
+    def refresh_pool(self):
+        t = time.time()
+        batch_size = 100
+        loader = DataLoader(self.dataset, 
+                        batch_size=batch_size,
+                        collate_fn=collate_fn,
+                        num_workers=5,
+                        prefetch_factor=4,
+                        pin_memory=True) 
+        i = 0
+        for neg_id, neg_feat in loader:
+            num_sampled = batch_size * const.num_sampled_once  
+            ed = min(i + num_sampled, self.pool_size)
+            self.neg_id_pool[i:ed] = neg_id[:ed-i]
+            for k, v in neg_feat.items():
+                self.neg_feat_pool[k][i:ed] = v[:ed-i]
+            i += num_sampled
+            if i >= self.pool_size:
+                break
+        
+        self.iter_count = 0
+        self.data_idx = 0
+        # 显存随机读写奇慢无比，必须先打乱然后顺序读
+        self.shuffle_pool()
+        
+        
+        
+        print(f"Negative sample pool refreshed with {len(self.neg_id_pool)} samples in {time.time() - t} seconds.")
+        
+    def shuffle_pool(self):
+        permed_idx = torch.randperm(self.pool_size)
+        self.neg_id_pool = self.neg_id_pool[permed_idx]
+        for k, v in self.neg_feat_pool.items():
+            self.neg_feat_pool[k] = v[permed_idx]
+        
+    def sample(self):
+        if self.iter_count >= const.refresh_interval:
+            self.refresh_pool()
+        
+        self.iter_count += 1
+        
+        if self.data_idx * const.neg_sample_num >= self.pool_size:
+            self.data_idx = 0
+            self.shuffle_pool()
+                    
+        sampled_reids = self.neg_id_pool[self.data_idx * const.neg_sample_num:(self.data_idx + 1) * const.neg_sample_num]
+        sampled_feats = {k: v[self.data_idx * const.neg_sample_num:(self.data_idx + 1) * const.neg_sample_num] for k, v in self.neg_feat_pool.items()}
+        
+        self.data_idx += 1
+        return sampled_reids, sampled_feats
+
 
 def sample_neg():
     dataset = None
@@ -173,16 +245,8 @@ def sample_neg():
                                        const.penalty_ratio)
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
-    loader = DataLoader(dataset, 
-                        batch_size=const.neg_sample_num // const.num_sampled_once,
-                        collate_fn=collate_fn,
-                        num_workers=5,
-                        prefetch_factor=4,
-                        pin_memory=True,
-                        persistent_workers=True,
-                        )
     
-    return loader
+    return SampledPool(dataset)
             
 # class BaseSampler:
 #     def __init__(self, data_path):

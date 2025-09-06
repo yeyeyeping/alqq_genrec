@@ -69,20 +69,15 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     # global hard_neg_bank_id, hard_neg_bank_feat
     user_id, user_feat, action_type, item_id, item_feat, context_feat = batch
     item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 0)
-    # 负样本采样
-    neg_id, neg_feat = next(loader)
-    neg_id, neg_feat = neg_id.to(const.device, non_blocking=True), to_device(neg_feat)
-    item_id = item_id.to(const.device, non_blocking=True)
-    # 排除包含在用户序列的负样本
-    mask = torch.isin(neg_id, item_id)
-    neg_id = neg_id[~mask]
-    neg_feat = {k:v[~mask] for k,v in neg_feat.items()}
-    
-    neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
-    neg_feat['81'] = neg_feat['81'].to(const.device)
     
     user_id = user_id.to(const.device, non_blocking=True)
-    user_feat, item_feat, context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
+    item_id, user_feat, item_feat, context_feat = item_id.to(const.device, non_blocking=True), to_device(user_feat), to_device(item_feat), to_device(context_feat)
+    # 负样本采样
+    neg_id, neg_feat = loader.sample()
+    # 排除包含在用户序列的负样本
+    
+    neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
+    neg_id, neg_feat = neg_id.to(const.device, non_blocking=True), to_device(neg_feat)
     
     # if (hard_neg_bank_id == 0).sum() == 0:
     #     neg_id = torch.cat([hard_neg_bank_id, neg_id])
@@ -101,7 +96,10 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         
         anchor_emb = F.normalize(next_token_emb[indices[0], indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
-        neg_emb = F.normalize(neg_emb, dim=-1)
+        
+        mask = torch.isin(neg_id, item_id)
+        neg_emb = F.normalize(neg_emb[~mask], dim=-1)
+        
         loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, 
                                                        pos_emb, 
                                                        neg_emb, 
@@ -120,7 +118,7 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
             #                       for k in hard_neg_bank_feat.keys()}
             
             top1_correct, top10_correct, entropy = compute_metrics(logits)
-    return loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,neg_id.shape[0]
+    return loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,neg_emb.shape[0]
 
 def compute_metrics(logits):
     _, top1_indices = torch.topk(logits, k=1, largest=True, dim=1)
@@ -211,7 +209,7 @@ if __name__ == '__main__':
     
     global_step = 0
     total_step = const.num_epochs * len(train_loader)
-    neg_loader = iter(sample_neg())
+    neg_loader = sample_neg()
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
     hard_neg_bank_id = torch.zeros(10000, dtype=torch.int32, device=const.device)

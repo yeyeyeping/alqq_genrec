@@ -25,7 +25,7 @@ max_seq_len = 101
 # 训练相关
 l2_alpha = 1e-7
 device = "cuda"
-batch_size = 160
+batch_size = 128
 num_workers = 8
 num_epochs = 10
 warmup_t = 2000
@@ -35,14 +35,19 @@ seed = 3407
 # sampling_strategy = "hot" # hot
 # hot_exp_ratio = 0.2
 # hot_click_ratio = 0.05
-sampling_strategy = "popularity"
+sampling_strategy = "random"
 uniform_sampling_ratio = 0.7
-num_sampled_once = 64
 penalty_ratio = 0.5
 
+# 采样池设置
+num_sampled_once = 300
+sampling_factor = 100
+refresh_interval = 6000
 neg_sample_num = 30000
+
 temperature = 0.04
 grad_norm = 1.0
+
 # 推理相关
 infer_batch_size = 512
 # 模型参数
