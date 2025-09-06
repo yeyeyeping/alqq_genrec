@@ -68,7 +68,7 @@ def make_input_and_label(seq_id, action_type, feat, context_feat):
 def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     # global hard_neg_bank_id, hard_neg_bank_feat
     user_id, user_feat, action_type, item_id, item_feat, context_feat = batch
-    item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 1)
+    item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 0)
     # 负样本采样
     neg_id, neg_feat = next(loader)
     neg_id, neg_feat = neg_id.to(const.device, non_blocking=True), to_device(neg_feat)
@@ -102,7 +102,11 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         anchor_emb = F.normalize(next_token_emb[indices[0], indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
         neg_emb = F.normalize(neg_emb, dim=-1)
-        loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, return_logits=True)
+        loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, 
+                                                       pos_emb, 
+                                                       neg_emb, 
+                                                       const.temperature, 
+                                                       return_logits=True)
         
         loss += l2_reg_loss(model,const.l2_alpha)
         
