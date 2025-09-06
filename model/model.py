@@ -15,7 +15,7 @@ class UserTower(nn.Module):
             nn.ReLU(),
             # nn.LayerNorm(const.model_param.user_dnn_units),
             # nn.Dropout(const.model_param.dropout),
-            nn.Linear(const.model_param.user_dnn_units, const.model_param.hidden_units),
+            nn.Linear(const.model_param.user_dnn_units, 2 * const.model_param.hidden_units),
         )
         
     def get_user_feature_dim(self):
@@ -180,11 +180,11 @@ class BaselineModel(nn.Module):
         self.user_tower = UserTower()
         self.context_tower = ContextTower(self.item_tower.sparse_emb['item_id'])
         self.merge_dnn = nn.Sequential(
-            nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units),
+            nn.Linear(2 * const.model_param.hidden_units, const.model_param.hidden_units),
             # nn.LayerNorm(const.model_param.hidden_units),
             # nn.Dropout(const.model_param.dropout),
         )
-        self.context_dnn = nn.Linear(const.model_param.hidden_units * 3, const.model_param.hidden_units)
+        # self.context_dnn = nn.Linear(const.model_param.hidden_units * 3, const.model_param.hidden_units)
         
         self.pos_embedding = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
         self.emb_dropout = nn.Dropout(const.model_param.dropout)
@@ -209,8 +209,10 @@ class BaselineModel(nn.Module):
         item_feat = self.item_tower(input_ids, input_feat)
         user_feat = self.user_tower(user_id, user_feat)
         context_feat = self.context_tower(context_feat)
-        seq_feat = torch.cat([item_feat, user_feat[:,None].repeat(1,item_feat.shape[1],1),context_feat], dim=-1)
-        seq_feat = self.context_dnn(seq_feat)
+        seq_feat = torch.cat([item_feat, context_feat], dim=-1)
+        seq_feat = torch.cat([F.dropout(user_feat[:, None], p=const.model_param.dropout), seq_feat], dim=1)
+        
+        # seq_feat = self.context_dnn(seq_feat)
         return self.merge_dnn(seq_feat)
     
         
@@ -218,11 +220,10 @@ class BaselineModel(nn.Module):
         emb = self.forward_all_feat(user_id, user_feat,input_ids, input_feat, context_feat)
         feat = self.emb_dropout(emb)
         
-        maxlen = input_ids.shape[1]
-        
+        maxlen = input_ids.shape[1] + 1
         ones_matrix = torch.ones((maxlen, maxlen), dtype=torch.bool, device=emb.device)
         attention_mask_tril = torch.tril(ones_matrix)
-        attention_mask_pad = (input_ids != 0)
+        attention_mask_pad = torch.cat([torch.ones((input_ids.shape[0], 1), dtype=torch.bool, device=input_ids.device), (input_ids != 0)], dim=1)
         attention_mask = attention_mask_tril.unsqueeze(0) & attention_mask_pad.unsqueeze(1)
         
         log_feats = self.casual_attention_layers(feat, attention_mask)

@@ -104,25 +104,21 @@ class PopularityNegDataset(Dataset):
         self.num_popularity_sampling = self.num_sampled_once - self.num_uniform_sampling
         
         
-        
-        self.item_id_list = list(range(1, len(self.item_feat_dict) + 1))
-        
         item_expression_num,item_click_num = self._load_data_info()
         self.item_popularity = self.calculate_popularity(item_expression_num, item_click_num)
         
-        
-        
-    
     def calculate_popularity(self,item_expression_num, item_click_num):
         popularity = {}
-        for k in self.item_id_list:
+        
+        for k in range(1, len(self.item_feat_dict) + 1):
             
             if item_expression_num.get(k, 0) == 0:
                 popularity[k] = 1e-5
             else:
                 popularity[k] = item_click_num.get(k, 0) / item_expression_num.get(k, 0)
-                    
-        return popularity.values()
+        popularity = torch.as_tensor(list(popularity.values()))
+        print(f"popularity: {popularity[:20]}")
+        return popularity
         
             
     def __len__(self):
@@ -139,15 +135,14 @@ class PopularityNegDataset(Dataset):
         neg_item_reid_list = []
         neg_item_feat_list = []
         
+        uniform_sampling_ids = torch.randint(1, len(self.item_feat_dict) + 1, size=(self.num_uniform_sampling,))
+        popularity_sampling_ids = torch.multinomial(self.item_popularity, self.num_popularity_sampling) + 1
         
-        uniform_sampling_ids = random.choices(self.item_id_list, k=self.num_uniform_sampling)
-        popularity_sampling_ids = random.choices(self.item_id_list, self.item_popularity, k=self.num_popularity_sampling)
-        sampled_ids = sorted(uniform_sampling_ids + popularity_sampling_ids)
-        
+        sampled_ids = torch.cat([uniform_sampling_ids, popularity_sampling_ids]).sort().values
         for i in sampled_ids:
             
             neg_item_reid_list.append(i)
-            neg_item_feat_list.append(self.item_feat_dict[str(i)])
+            neg_item_feat_list.append(self.item_feat_dict[str(i.item())])
             
             
         return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
@@ -179,10 +174,12 @@ def sample_neg():
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
     loader = DataLoader(dataset, 
-                        batch_size=const.neg_sample_num // 256,
+                        batch_size=const.neg_sample_num // const.num_sampled_once,
                         collate_fn=collate_fn,
                         num_workers=5,
-                        prefetch_factor=2,
+                        prefetch_factor=4,
+                        pin_memory=True,
+                        persistent_workers=True,
                         )
     
     return loader

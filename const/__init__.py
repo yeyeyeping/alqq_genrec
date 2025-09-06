@@ -25,7 +25,7 @@ max_seq_len = 101
 # 训练相关
 l2_alpha = 1e-7
 device = "cuda"
-batch_size = 180
+batch_size = 160
 num_workers = 8
 num_epochs = 10
 warmup_t = 2000
@@ -37,11 +37,11 @@ seed = 3407
 # hot_click_ratio = 0.05
 sampling_strategy = "popularity"
 uniform_sampling_ratio = 0.7
-num_sampled_once = 256
+num_sampled_once = 64
 penalty_ratio = 0.5
 
 neg_sample_num = 30000
-temperature = 0.03
+temperature = 0.04
 grad_norm = 1.0
 # 推理相关
 infer_batch_size = 512
