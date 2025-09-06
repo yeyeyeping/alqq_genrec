@@ -42,7 +42,7 @@ penalty_ratio = 0.5
 # 采样池设置
 num_sampled_once = 300
 sampling_factor = 100
-refresh_interval = 6000
+refresh_interval = 1000
 neg_sample_num = 30000
 
 temperature = 0.04

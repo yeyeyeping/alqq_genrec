@@ -85,7 +85,6 @@ class HotNegDataset(Dataset):
         return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
                                                                                include_user=False, 
                                                                                include_context=False)
-
 class PopularityNegDataset(Dataset):
     def __init__(self, 
                  data_path, 
@@ -102,14 +101,9 @@ class PopularityNegDataset(Dataset):
         self.num_uniform_sampling = int(self.num_sampled_once * uniform_sampling_ratio)
         self.num_popularity_sampling = self.num_sampled_once - self.num_uniform_sampling
         
-        item_expression_num, item_click_num = self._load_data_info()
+        
+        item_expression_num,item_click_num = self._load_data_info()
         self.item_popularity = self.calculate_popularity(item_expression_num, item_click_num)
-        # Pre-compute a large sampling pool based on popularity for faster sampling
-        self.popularity_sampling_pool_size = 1000000  # Size of pre-computed pool
-        print(f"Pre-computing popularity sampling pool of size {self.popularity_sampling_pool_size}...")
-        self.popularity_sampling_pool = torch.multinomial(self.item_popularity, self.popularity_sampling_pool_size, replacement=True) + 1
-        print("Popularity sampling pool pre-computed.")
-        self.pool_index = 0
         
     def calculate_popularity(self,item_expression_num, item_click_num):
         popularity = {}
@@ -140,17 +134,13 @@ class PopularityNegDataset(Dataset):
         neg_item_feat_list = []
         
         uniform_sampling_ids = torch.randint(1, len(self.item_feat_dict) + 1, size=(self.num_uniform_sampling,))
-        # Sample from pre-computed popularity pool instead of direct multinomial sampling
-        if self.pool_index + self.num_popularity_sampling >= self.popularity_sampling_pool_size:
-            self.pool_index = 0  # Reset to start if we reach the end of the pool
-        popularity_sampling_ids = self.popularity_sampling_pool[self.pool_index:self.pool_index + self.num_popularity_sampling]
-        self.pool_index += self.num_popularity_sampling
+        popularity_sampling_ids = torch.multinomial(self.item_popularity, self.num_popularity_sampling) + 1
         
         sampled_ids = torch.cat([uniform_sampling_ids, popularity_sampling_ids]).sort().values
-        for sampled_id in sampled_ids:
+        for i in sampled_ids:
             
-            neg_item_reid_list.append(sampled_id)
-            neg_item_feat_list.append(self.item_feat_dict[str(sampled_id.item())])
+            neg_item_reid_list.append(i)
+            neg_item_feat_list.append(self.item_feat_dict[str(i.item())])
             
             
         return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
@@ -204,8 +194,6 @@ class SampledPool:
         self.data_idx = 0
         # 显存随机读写奇慢无比，必须先打乱然后顺序读
         self.shuffle_pool()
-        
-        
         
         print(f"Negative sample pool refreshed with {len(self.neg_id_pool)} samples in {time.time() - t} seconds.")
         
