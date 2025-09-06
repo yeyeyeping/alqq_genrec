@@ -67,7 +67,7 @@ def make_input_and_label(seq_id, action_type, feat, context_feat,shift=1):
 def train_one_step(epoch, batch, emb_loader, loader, model:BaselineModel):
     # global hard_neg_bank_id, hard_neg_bank_feat
     user_id, user_feat, action_type, item_id, item_feat, context_feat = batch
-    item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 1)
+    item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 0)
     # 负样本采样
     neg_id, neg_feat = next(loader)
     neg_id, neg_feat = neg_id.to(const.device, non_blocking=True), to_device(neg_feat)
