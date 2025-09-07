@@ -215,7 +215,6 @@ class SampledPool:
                     
         sampled_reids = self.neg_id_pool[self.data_idx * const.neg_sample_num:(self.data_idx + 1) * const.neg_sample_num]
         sampled_feats = {k: v[self.data_idx * const.neg_sample_num:(self.data_idx + 1) * const.neg_sample_num] for k, v in self.neg_feat_pool.items()}
-        
         self.data_idx += 1
         return sampled_reids, sampled_feats
 

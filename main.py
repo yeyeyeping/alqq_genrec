@@ -18,6 +18,8 @@ from utils import seed_everything, seed_worker
 from loss import info_nce_loss,l2_reg_loss
 from mm_emb_loader import Memorymm81Embloader
 from torch.optim import SGD
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 def build_dataloader(dataset, batch_size, num_workers, shuffle):
     return DataLoader(
         dataset, 

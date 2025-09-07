@@ -56,7 +56,7 @@ class FlashMultiHeadAttention(nn.Module):
         self.k_linear = nn.Linear(hidden_units, hidden_units)
         self.v_linear = nn.Linear(hidden_units, hidden_units)
         self.out_linear = nn.Linear(hidden_units, hidden_units)
-        freqs = precompute_freqs_cis(self.head_dim, const.max_seq_len)
+        freqs = precompute_freqs_cis(self.head_dim, const.max_seq_len + 1)
         self.register_buffer("freqs_cis", freqs)
         
     def forward(self, query, key, value, attn_mask=None):

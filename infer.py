@@ -7,6 +7,7 @@ from dataset import MyTestDataset,MyDataset
 from torch.utils.data import DataLoader
 import torch
 import const
+from model.atten import precompute_freqs_cis
 from  mm_emb_loader import Memorymm81Embloader
 from torch.nn import functional as F
 import time
@@ -72,7 +73,7 @@ def infer():
     # 加载数据
     test_dataset = MyTestDataset(data_path=data_path)
     dataloader = DataLoader(test_dataset,
-                            batch_size=4096,  # 使用正确的512 
+                            batch_size=1024,  # 使用正确的512 
                             num_workers=16, 
                             pin_memory=True,
                             persistent_workers=True,  # 保持worker存活
@@ -81,6 +82,8 @@ def infer():
     emb_loader = Memorymm81Embloader(data_path)
     # 加载模型
     model = BaselineModel().to(const.device)
+    for layer in model.casual_attention_layers.attention_layers:
+        layer.freqs_cis = precompute_freqs_cis(layer.head_dim, const.max_seq_len + 1).to(const.device)
     ckpt_path = get_ckpt_path()
     print(f"load model from {ckpt_path}")
     model.load_state_dict(torch.load(ckpt_path, map_location=const.device))
