@@ -11,9 +11,13 @@ class ModelParam:
         self.embedding_table_size["205"] = 32
         self.embedding_table_size["206"] = self.max_decay
         
+        self.embedding_table_size["301"] = 60
+        self.embedding_table_size["302"] = 20
+        self.embedding_table_size["303"] = 256
+        
         self.embedding_dim = {
-            "user_id":256,
-            "item_id":256,
+            "user_id":180,
+            "item_id":180,
             # 物品特征
             "100": 4,      # 6
             "101": 8,     # 51
@@ -53,6 +57,11 @@ class ModelParam:
             "204": 32, # month
             "205": 32, # day   
             "206": 32, # decay
+            
+            # 手工特征
+            "301": 8,
+            "302": 8,
+            "303": 32,
         }
         
         self.user_dnn_units = 128

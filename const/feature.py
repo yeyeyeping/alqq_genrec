@@ -38,7 +38,7 @@ class  ItemFeature:
             '100',
             '101',
             '102',
-            # '111',
+            '111',
             '112',
             '114',
             '115',
@@ -47,12 +47,24 @@ class  ItemFeature:
             '118',
             '119',
             '120',
-            # '121',
+            '121',
             '122',
+            '301',
+            '302',
+            '303',
         )
         self.dense_feature_ids = ()
         self.mm_emb_feature_ids = ("81", )
         self.all_feature_ids = sorted(list(self.sparse_feature_ids) + list(self.dense_feature_ids))
+        
+        # 特征ID常量
+        self.ITEM_EXPRESSION_ID = '301'
+        self.ITEM_CLICK_ID = '302'
+        self.ITEM_CLICK_RATE_ID = '303'
+        
+        # 特征值上限常量
+        self.ITEM_EXPRESSION_MAX = 58
+        self.ITEM_CLICK_MAX = 18
     
     def fill(self, feat_id):
         if feat_id in self.sparse_feature_ids:

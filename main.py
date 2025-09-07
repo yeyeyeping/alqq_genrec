@@ -194,7 +194,7 @@ if __name__ == '__main__':
     apply_model_init(model)
 
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=const.lr, betas=(0.9, 0.99))
+    optimizer = torch.optim.Adam(model.parameters(), lr=const.lr, betas=(0.9, 0.99))
     scheduler = CosineLRScheduler(
                         optimizer, 
                         t_initial=max(const.num_epochs * len(train_loader) - 4000, 4000),  

@@ -5,9 +5,10 @@ import json
 import const
 from collections import defaultdict
 import torch
+import pickle
 from datetime import datetime
 import pandas as pd
-
+import math
 # from torch.utils.data._utils.collate import default_collate
 # import numpy as np
 # from sampler import BaseSampler
@@ -19,7 +20,30 @@ class MyDataset(Dataset):
         self.data_path = Path(data_path)
         self.seq_offsets = self.load_offset()
         self.seq_file_fp = None
+        
+        self.item_expression, self.item_click = self.load_item_click_and_expression()
+        self.click_rate, self.max_click_rate, self.min_click_rate = self.calculate_click_rate()
     
+    def load_item_click_and_expression(self):
+        with open(const.cache_path/"data_info.pkl", "rb") as f:
+            data_info = pickle.load(f)
+        return data_info['item_expression_num'], data_info['item_click_num']
+    
+    def calculate_click_rate(self):
+        click_rate = {}
+        max_click_rate = 0
+        min_click_rate = 999999
+        for k in range(1, const.model_param.embedding_table_size['item_id'] + 1):
+            if k not in self.item_click.keys() or k not in self.item_expression.keys():
+                click_rate[k] = -1
+            else:
+                click_rate[k] = int(math.log( self.item_expression[k] + 1/(self.item_click[k] + 1)))
+            
+                max_click_rate = max(max_click_rate, click_rate[k])
+                min_click_rate = min(min_click_rate, click_rate[k])
+        print(f"max_click_rate: {max_click_rate}, min_click_rate: {min_click_rate}")
+        return click_rate, max_click_rate, min_click_rate
+
     def load_offset(self):
         return read_pickle(self.data_path/'seq_offsets.pkl')
         
@@ -135,6 +159,33 @@ class MyDataset(Dataset):
                         
         return out_dict
     
+    def add_click_expression_feat(self, feat, item_id):
+        # 查无此item
+        if item_id in self.item_expression:    
+            feat["301"] = self.item_expression[item_id]
+            if feat["301"] > 58:
+                feat["301"] = 59
+            feat["301"] = feat["301"] + 1
+        else:
+            feat["301"] = 0
+        
+        if item_id in self.item_click:
+            feat["302"] = self.item_click[item_id]
+            if feat["302"] > 18:
+                feat["302"] = 19
+            feat["302"] = feat["302"] + 1
+        else:
+            feat["302"] = 0
+            
+        click_rate = self.click_rate[item_id]
+        if click_rate != -1:
+            left = torch.bucketize(click_rate, torch.tensor([self.min_click_rate, self.max_click_rate]), right=False) + 1
+            bucket_id = left.clamp(min=1, max=const.model_param.embedding_table_size["303"] - 1)
+            feat["303"] = bucket_id
+        else:
+            feat["303"] = 0
+        return feat
+    
     @classmethod
     def pad_seq(cls, seq, seq_len, pad_value):
         pad_len = seq_len - len(seq)
@@ -159,29 +210,31 @@ class MyDataset(Dataset):
         action_type_list = []
         feat_list = []
         ts_list = []
-        front_click_item = set()
+        front_click_item = 0
+        front_click_101 = 0
         seq_list = []
+        front_click_101_list = []
         for i, feat, action_type, ts in ext_user_seq:
             item_id_list.append(i)
             action_type_list.append(action_type if action_type is not None else 0)
+            feat = self.add_click_expression_feat(feat, i)             
             feat_list.append(feat)
             
-            clicked_item_list = list(front_click_item)
-            click_seq = MyDataset.pad_seq(clicked_item_list[-const.context_feature.seq_len:].copy(), 
-                                          const.context_feature.seq_len, 
-                                          0)
-                                        
-            seq_list.append(click_seq)
+            
+            seq_list.append(front_click_item)
+            front_click_101_list.append(front_click_101)
             
             if action_type == 1:
-                front_click_item.add(i)
+                front_click_item = i
+                front_click_101 = feat.get("101", front_click_101)
                 
             ts_list.append(ts)
             
         item_id_list = MyDataset.pad_seq(item_id_list, const.max_seq_len, 0)
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len, 0)
-        seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0,]*const.context_feature.seq_len)
+        seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, 0)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
+        front_click_101_list = MyDataset.pad_seq(front_click_101_list, const.max_seq_len, 0)
         
         item_feat_dict = MyDataset.collect_features(feat_list,
                                                     include_item=True, 
@@ -191,7 +244,8 @@ class MyDataset(Dataset):
         time_feat = self.add_time_feat(ts_list)
         context_feat = {
             ** time_feat,
-            "210": torch.as_tensor(seq_list, dtype=torch.int32)
+            "210": torch.as_tensor(seq_list, dtype=torch.int32),
+            "401": torch.as_tensor(front_click_101_list, dtype=torch.int32)
         }
         return action_type_list, item_id_list, item_feat_dict, context_feat
     
