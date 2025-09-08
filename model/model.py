@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import const
 from torch import nn
 from .atten import AttentionDecoder
-
+from .hstu import HstuAttentionDecoder      
 class UserTower(nn.Module):
     def __init__(self):
         super().__init__()
@@ -190,11 +190,14 @@ class BaselineModel(nn.Module):
         
         self.pos_embedding = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
         self.emb_dropout = nn.Dropout(const.model_param.dropout)
-        self.casual_attention_layers = AttentionDecoder(const.model_param.num_blocks, 
+        self.casual_attention_layers = HstuAttentionDecoder(const.model_param.num_blocks, 
                                                         const.model_param.hidden_units,
                                                         const.model_param.num_heads,
                                                         const.model_param.dropout,
-                                                        const.model_param.norm_first)
+                                                        const.model_param.norm_first,
+                                                        const.model_param.relative_attention_num_buckets,
+                                                        const.model_param.relative_attention_bucket_dim,
+                                                        const.model_param.relative_attention_max_distance)
         
     def add_pos_embedding(self, seqs_id, emb, ):
         # emb *= const.model_param.hidden_units ** 0.5

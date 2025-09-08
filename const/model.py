@@ -62,6 +62,10 @@ class ModelParam:
         self.num_blocks = 8
         self.num_heads = 8
         self.norm_first = True
+        self.relative_attention_num_buckets = 32
+        self.relative_attention_bucket_dim = 16
+        self.relative_attention_max_distance = 128
+    
     def read_feature_size(self, indexer_file):
         indexer = read_pickle(indexer_file)
         emb_table_size = {}
