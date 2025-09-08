@@ -136,8 +136,6 @@ class HSTUBlock(nn.Module):
     def __init__(self, 
                  d_model, 
                  num_heads,
-                 max_time_interval, 
-                 time_interval_dim, 
                  relative_attention_num_buckets,
                  relative_attention_bucket_dim,                 
                  relative_attention_max_distance, 
@@ -192,8 +190,6 @@ class HstuAttentionDecoder(nn.Module):
             new_attn_layer = HSTUBlock(
                 hidden_units, 
                 num_heads, 
-                max_time_interval, 
-                time_interval_dim, 
                 relative_attention_num_buckets, 
                 relative_attention_bucket_dim, 
                 relative_attention_max_distance
