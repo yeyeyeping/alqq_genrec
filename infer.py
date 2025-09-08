@@ -24,7 +24,7 @@ def to_device(batch):
             batch[k] = v.to(const.device, non_blocking=True)
     return batch
 
-def next_batched_item(indexer, batch_size=512):
+def next_batched_item(indexer, item_rqvae_map, batch_size=512):
     candidate_path = Path(os.environ.get('EVAL_DATA_PATH'), 'predict_set.jsonl')
     with open(candidate_path, 'r') as f:
         item_id_list = []
@@ -37,6 +37,11 @@ def next_batched_item(indexer, batch_size=512):
             item_id = indexer[creative_id] if creative_id in indexer else 0
             feature = MyTestDataset._process_cold_start_feat(feature)
             
+            if item_rqvae_map and item_id in item_rqvae_map:
+                rqvae_codes = item_rqvae_map[item_id]
+                for j, code in enumerate(rqvae_codes):
+                    feature[f'40{j+1}'] = code
+
             item_id_list.append(item_id)
             feature_list.append(feature)
             creative_id_list.append(creative_id)
@@ -92,7 +97,7 @@ def infer():
     item_features = []
     item_creative_id = []
     print(f"start to obtain item features....")
-    for item_id, feature, creative_id in next_batched_item(test_dataset.indexer['i'], const.infer_batch_size):
+    for item_id, feature, creative_id in next_batched_item(test_dataset.indexer['i'], test_dataset.item_rqvae_map, const.infer_batch_size):
         feature = emb_loader.add_mm_emb(item_id, feature)
         item_id = item_id.to(const.device)
         feature = to_device(feature)

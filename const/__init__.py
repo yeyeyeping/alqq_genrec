@@ -14,6 +14,7 @@ if data_path is None:
 
 cache_dir = os.environ.get('USER_CACHE_PATH', './cache')
 statistical_features = get_statistical_features(data_path, cache_dir)
+print(f"Statistical features: {len(statistical_features)}")
     
 # 数据相关
 mm_emb_dim = {

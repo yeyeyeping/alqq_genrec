@@ -51,6 +51,7 @@ class  ItemFeature:
             '122',
             '301',
             '302',
+            '401', '402', '403', '404', '405', '406', '407', '408'
         )
         self.dense_feature_ids = ()
         self.mm_emb_feature_ids = ("81", )

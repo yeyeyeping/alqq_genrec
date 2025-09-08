@@ -7,6 +7,7 @@ from collections import defaultdict
 import torch
 from datetime import datetime
 import pandas as pd
+import os
 
 # from torch.utils.data._utils.collate import default_collate
 # import numpy as np
@@ -20,7 +21,35 @@ class MyDataset(Dataset):
         self.seq_offsets = self.load_offset()
         self.seq_file_fp = None
         self.statistical_features = statistical_features
-    
+        self.item_rqvae_map = self.load_rqvae_map()
+
+    def load_rqvae_map(self):
+        rqvae_path = os.environ.get('USER_CACHE_PATH')
+        if not rqvae_path:
+            return {}
+
+        semantic_map_file = Path(rqvae_path) / 'semantic_id_map.json'
+        if not semantic_map_file.exists():
+            return {}
+
+        with open(semantic_map_file, 'r') as f:
+            semantic_id_map = json.load(f)
+        
+        semantic_id_map_int_keys = {int(k): v for k, v in semantic_id_map.items()}
+
+        indexer = read_pickle(self.data_path / 'indexer.pkl')
+        crid_2_reid = indexer['i']
+        
+        item_rqvae_map = {
+            reid: semantic_id_map_int_keys[crid]
+            for crid, reid in crid_2_reid.items()
+            if crid in semantic_id_map_int_keys
+        }
+
+        print(f"Loaded {len(item_rqvae_map)} items' rqvae codes")
+
+        return item_rqvae_map
+
     def load_offset(self):
         return read_pickle(self.data_path/'seq_offsets.pkl')
         
@@ -165,6 +194,10 @@ class MyDataset(Dataset):
         for i, feat, action_type, ts in ext_user_seq:
             feat['301'] = self.statistical_features['global_id_popularity_100'].get(feat.get('100'), 0)
             feat['302'] = self.statistical_features['global_value_popularity_101'].get(feat.get('101'), 0)
+            if self.item_rqvae_map and i in self.item_rqvae_map:
+                rqvae_codes = self.item_rqvae_map[i]
+                for j, code in enumerate(rqvae_codes):
+                    feat[f'40{j+1}'] = code
             item_id_list.append(i)
             action_type_list.append(action_type if action_type is not None else 0)
             feat_list.append(feat)
@@ -296,7 +329,7 @@ class MyTestDataset(MyDataset):
         
         user_feat['303'] = self.statistical_features['user_most_freq_value_101'].get(user_id, 0)
         user_feat['304'] = self.statistical_features['user_cross_freq_101_102'].get(user_id, 0)
-               
+        
         user_feat = MyDataset.fill_feature(user_feat,
                                            include_user=True,
                                            include_item=False,

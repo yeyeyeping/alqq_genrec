@@ -15,6 +15,15 @@ class ModelParam:
         self.embedding_table_size["303"] = self.embedding_table_size['101'] # user_most_freq_value_101
         self.embedding_table_size["304"] = len(statistical_features['cross_freq_101_102_indexer']) + 1 # user_cross_freq_101_102
         
+        self.embedding_table_size["401"] = 512
+        self.embedding_table_size["402"] = 256
+        self.embedding_table_size["403"] = 256
+        self.embedding_table_size["404"] = 128
+        self.embedding_table_size["405"] = 128
+        self.embedding_table_size["406"] = 64
+        self.embedding_table_size["407"] = 64
+        self.embedding_table_size["408"] = 32
+
         self.embedding_dim = {
             "user_id":64,
             "item_id":96,
@@ -61,6 +70,14 @@ class ModelParam:
             "302": 16,
             "303": 16,
             "304": 16,
+            "401": 16,
+            "402": 16,
+            "403": 16,
+            "404": 16,
+            "405": 16,
+            "406": 16,
+            "407": 16,
+            "408": 16,
         }
         self.user_dnn_units = 128
         self.item_dnn_units = 128
