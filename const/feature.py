@@ -38,7 +38,7 @@ class  ItemFeature:
             '100',
             '101',
             '102',
-            # '111',
+            '111',
             '112',
             '114',
             '115',
@@ -47,7 +47,7 @@ class  ItemFeature:
             '118',
             '119',
             '120',
-            # '121',
+            '121',
             '122',
         )
         self.dense_feature_ids = ()
@@ -74,7 +74,7 @@ class ContextFeature:
             "206",
         )
         self.seq_len = 10
-        self.array_feature_ids = ("210", )
+        self.array_feature_ids = ("210")
         
         self.all_feature_ids = sorted(list(self.sparse_feature_ids) + list(self.array_feature_ids))
     

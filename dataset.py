@@ -160,7 +160,9 @@ class MyDataset(Dataset):
         feat_list = []
         ts_list = []
         front_click_item = set()
+        front_click_101 = 0
         seq_list = []
+        front_click_101_list = []
         for i, feat, action_type, ts in ext_user_seq:
             item_id_list.append(i)
             action_type_list.append(action_type if action_type is not None else 0)
@@ -170,18 +172,21 @@ class MyDataset(Dataset):
             click_seq = MyDataset.pad_seq(clicked_item_list[-const.context_feature.seq_len:].copy(), 
                                           const.context_feature.seq_len, 
                                           0)
-                                        
+            
             seq_list.append(click_seq)
             
+            front_click_101_list.append(front_click_101)
             if action_type == 1:
                 front_click_item.add(i)
+                front_click_101 = feat.get("101", front_click_101)
                 
             ts_list.append(ts)
             
         item_id_list = MyDataset.pad_seq(item_id_list, const.max_seq_len, 0)
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len, 0)
-        seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0,]*const.context_feature.seq_len)
+        seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0, ]*const.context_feature.seq_len)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
+        front_click_101_list = MyDataset.pad_seq(front_click_101_list, const.max_seq_len, 0)
         
         item_feat_dict = MyDataset.collect_features(feat_list,
                                                     include_item=True, 
@@ -191,7 +196,8 @@ class MyDataset(Dataset):
         time_feat = self.add_time_feat(ts_list)
         context_feat = {
             ** time_feat,
-            "210": torch.as_tensor(seq_list, dtype=torch.int32)
+            "210": torch.as_tensor(seq_list, dtype=torch.int32),
+            "401": torch.as_tensor(front_click_101_list, dtype=torch.int32)
         }
         return action_type_list, item_id_list, item_feat_dict, context_feat
     
