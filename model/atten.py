@@ -32,12 +32,12 @@ class PointWiseFeedForward(nn.Module):
 
         self.conv1 = nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
         self.dropout1 = nn.Dropout(p=dropout_rate)
-        self.relu = nn.ReLU()
+        self.gelu = nn.GELU()
         self.conv2 = nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
         self.dropout2 = nn.Dropout(p=dropout_rate)
 
     def forward(self, inputs):
-        outputs = self.dropout2(self.conv2(self.relu(self.dropout1(self.conv1(inputs.transpose(-1, -2))))))
+        outputs = self.dropout2(self.conv2(self.gelu(self.dropout1(self.conv1(inputs.transpose(-1, -2))))))
         outputs = outputs.transpose(-1, -2)  # as Conv1D requires (N, C, Length)
         return outputs
 
