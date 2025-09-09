@@ -18,14 +18,29 @@ class NegDataset(Dataset):
     def __len__(self):
         return 0x7FFFFFFF
     
+    def aug_feat(self, feat):
+        if len(feat.keys()) == 1:
+            return feat
+        masked_feat_name = random.sample(feat.keys(), random.randint(1, len(feat.keys()) - 1))
+        for k in masked_feat_name:
+            feat.pop(k)
+        return feat
+            
+        
     def __getitem__(self, index):
         neg_item_reid_list = []
         neg_item_feat_list = []
+        aug_neg_item_feat_list = []
         for i in random.sample(self.item_num, 256):
             neg_item_reid_list.append(i)
             neg_item_feat_list.append(self.item_feat_dict[str(i)])
-            
+            aug_neg_item_feat_list.append(self.aug_feat(self.item_feat_dict[str(i)]))
+        
         return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
+                                                                               include_item=True, 
+                                                                               include_context=False, 
+                                                                               include_user=False),\
+                                                                               MyDataset.collect_features(aug_neg_item_feat_list, 
                                                                                include_item=True, 
                                                                                include_context=False, 
                                                                                include_user=False)
@@ -88,14 +103,20 @@ class HotNegDataset(Dataset):
                                                                                include_context=False)
 
 def collate_fn(batch):
-    neg_item_reid_list, neg_item_feat_list = zip(*batch)
+    neg_item_reid_list, neg_item_feat_list, aug_neg_item_feat_list = zip(*batch)
     reid = torch.cat(neg_item_reid_list)
     out_dict = {}
+    
     for k in neg_item_feat_list[0].keys():
         feat = torch.cat([v[k] for v in neg_item_feat_list])
         out_dict[k] = feat
+    
+    out_aug_dict = {}
+    for k in aug_neg_item_feat_list[0].keys():
+        feat = torch.cat([v[k] for v in aug_neg_item_feat_list])
+        out_aug_dict[k] = feat
 
-    return reid, out_dict
+    return reid, out_dict, out_aug_dict
 
 def sample_neg():
     dataset = None

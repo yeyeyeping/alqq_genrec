@@ -15,7 +15,7 @@ from torch.amp import autocast, GradScaler
 from timm.scheduler import CosineLRScheduler
 from torch.nn import functional as F
 from utils import seed_everything, seed_worker
-from loss import info_nce_loss,l2_reg_loss
+from loss import info_nce_loss,l2_reg_loss,selfsup_infonce
 from mm_emb_loader import Memorymm81Embloader
 from torch.optim import SGD
 import os
@@ -70,8 +70,8 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     user_id, user_feat, action_type, item_id, item_feat, context_feat = batch
     item_feat = emb_loader.add_mm_emb(item_id, item_feat, item_id != 0)
     # 负样本采样
-    neg_id, neg_feat = next(loader)
-    neg_id, neg_feat = neg_id.to(const.device, non_blocking=True), to_device(neg_feat)
+    neg_id, neg_feat, aug_neg_feat = next(loader)
+    neg_id, neg_feat, aug_neg_feat = neg_id.to(const.device, non_blocking=True), to_device(neg_feat), to_device(aug_neg_feat)
     item_id = item_id.to(const.device, non_blocking=True)
     # 排除包含在用户序列的负样本
     mask = torch.isin(neg_id, item_id)
@@ -80,6 +80,11 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     
     neg_feat = emb_loader.add_mm_emb(neg_id, neg_feat)
     neg_feat['81'] = neg_feat['81'].to(const.device)
+    
+    aug_neg_feat = {k:v[~mask] for k,v in aug_neg_feat.items()}
+    noise = torch.clamp(torch.randn_like(neg_feat['81']) * 0.1, -0.2, 0.2)
+    aug_neg_feat['81'] = neg_feat['81'].clone() + noise
+    
     
     user_id = user_id.to(const.device, non_blocking=True)
     user_feat, item_feat, context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
@@ -95,6 +100,8 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         next_token_emb = model(user_id, user_feat, input_ids, input_feat, context_feat)
         
         neg_emb = model.item_tower(neg_id, neg_feat)
+        
+        neg_aug_emb = model.item_tower(neg_id, aug_neg_feat)
         pos_emb = model.item_tower(next_ids, next_feat)
 
         indices = torch.where(next_ids != 0) 
@@ -104,6 +111,11 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         neg_emb = F.normalize(neg_emb, dim=-1)
         loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, return_logits=True)
         
+        neg_aug_emb = F.normalize(neg_aug_emb, dim=-1)
+        
+        selfsup_loss = selfsup_infonce(neg_emb, neg_aug_emb, const.temperature)
+        
+        loss += selfsup_loss * 0.1
         loss += l2_reg_loss(model,const.l2_alpha)
         
         with torch.no_grad():
