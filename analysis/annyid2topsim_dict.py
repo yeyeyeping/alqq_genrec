@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pickle
 import torch
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 def read_pickle(path):
     with open(path, 'rb') as f:
         return pickle.load(f)
@@ -21,8 +22,8 @@ for k, v in read_pickle(emb).items():
 id_tensors = torch.as_tensor(id_list,device=torch.device('cuda'),dtype=torch.int64)
 emb_tensors = torch.stack(emb_list)
 # 分块参数 - 用于控制内存使用，避免一次性加载所有embeddings
-src_chunk_size = 1000  # 源embeddings的chunk大小，每次处理1000个源向量
-emb_chunk_size = 1000  # 目标embeddings的chunk大小，每次计算相似度时目标向量分块大小
+src_chunk_size = 2000  # 源embeddings的chunk大小，每次处理1000个源向量
+emb_chunk_size = 100000  # 目标embeddings的chunk大小，每次计算相似度时目标向量分块大小
 
 top21_list = []
 total_items = len(id_list)
