@@ -1,3 +1,4 @@
+import random
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
 from utils import read_pickle
@@ -200,11 +201,75 @@ class MyDataset(Dataset):
             "401": torch.as_tensor(front_click_101_list, dtype=torch.int32)
         }
         return action_type_list, item_id_list, item_feat_dict, context_feat
+    def random_crop_seq(self, ext_seq, p):
+        seq_len = len(ext_seq)
+        
+        num_crop = random.randint(seq_len // 20, seq_len // 5)
+        # 随机删除5-20%序列
+        if random.random() < p:
+            p = random.random()
+            # 删除前面的5-20%
+            if p < 0.4:
+                # 删除前面的5-20%
+                ext_seq = ext_seq[num_crop:]
+            elif p < 0.8:
+                #随机删除
+                random_removed_idx = random.sample(range(len(ext_seq)), num_crop)
+                # 随机删除但保留点击序列
+                ext_seq = [ext_seq[i] for i in range(len(ext_seq)) if i not in random_removed_idx or ext_seq[i][2] == 1] 
+               
+            else:
+                # 删除后面的5-20%
+                ext_seq = ext_seq[:-num_crop]
+        return ext_seq
+    def seq_reorder(self, ext_seq, p):
+        if random.random() < p:
+            return ext_seq
+        # 只在某个窗口内reorder
+        windows_size = random.randint(5, 15)
+        start_idx = random.randint(0, len(ext_seq) - windows_size)
+        
+        end_idx = start_idx + windows_size
+        reordered_seq = ext_seq[start_idx:end_idx]
+        random.shuffle(reordered_seq)
+        ext_seq[start_idx:end_idx] = reordered_seq
+        # 按照时间排序
+        ext_seq = sorted(ext_seq, key=lambda x: x[-1])
+        return ext_seq
     
+    def seq_mask(self, ext_seq, p):
+        if random.random() < p:
+            return ext_seq
+        
+        selected_seq = random.sample(ext_seq, int(len(ext_seq) * 0.05))
+        for _, feat, _, _ in selected_seq:
+            seleted_feat_key = random.sample(list(feat.keys()), 1)
+            
+            for seleted_feat_key in seleted_feat_key:
+                if seleted_feat_key in feat:
+                    feat.pop(seleted_feat_key)
+        return ext_seq
+    def aug_seq(self, ext_seq):
+        if len(ext_seq) < 30:
+            return ext_seq
+        
+        # 随机crop序列
+        ext_seq = self.random_crop_seq(ext_seq, const.crop_prob)
+       
+        # reorder其中部分序列
+        ext_seq = self.seq_reorder(ext_seq, const.reorder_prob)
+       
+        # 随机替换 mask掉一些item的feature
+        ext_seq = self.seq_mask(ext_seq, const.mask_prob)
+        
+        # 随机替换为相似item
+        return ext_seq
+                
+        
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
         user_id, user_feat, ext_user_seq = self.format_user_seq(user_seq)
-        
+        ext_user_seq = self.aug_seq(ext_user_seq)
         user_feat = MyDataset.fill_feature(user_feat, 
                                            include_user=True, 
                                            include_item=False, 
