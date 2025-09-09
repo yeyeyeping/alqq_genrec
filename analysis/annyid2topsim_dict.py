@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 import torch
 import gc
+import time
 def read_pickle(path):
     with open(path, 'rb') as f:
         return pickle.load(f)
@@ -32,6 +33,7 @@ total_items = len(id_list)
 print("find top 20 sim item")
 # 对源embeddings分块处理
 for i in range(0, total_items, src_chunk_size):
+    t = time.time()
     end_i = min(i + src_chunk_size, total_items)
     emb_src = emb_tensors[i:end_i]
     a_id = id_tensors[i:end_i]
@@ -56,14 +58,15 @@ for i in range(0, total_items, src_chunk_size):
     # 拼接所有相似度chunks
     full_sim_mat = torch.cat(all_similarities, dim=1)
     full_indices_mat = torch.cat(all_indices, dim=1)
-
+    print(f"time cost: {time.time() - t}")
     # 找到top21（包含自己）
     _, topk_indices = torch.topk(full_sim_mat, k=21, dim=1)
     top21_global_indices = full_indices_mat.gather(1, topk_indices)
     top21 = id_tensors[top21_global_indices].cpu().tolist()
+    top21_list.append(top21)
     del sim_chunk, indices_chunk, full_sim_mat, full_indices_mat, top21_global_indices, topk_indices
     gc.collect()
-    top21_list.append(top21)
+    
 print("remove self similarity")
 
 # 移除自相似项
