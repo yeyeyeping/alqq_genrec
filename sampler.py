@@ -29,35 +29,30 @@ class NegDataset(Dataset):
                                                                                include_item=True, 
                                                                                include_context=False, 
                                                                                include_user=False)
+MEAN_EXP = 18.9
+MEAN_CLICK = 5.5
 
 class HotNegDataset(Dataset):
-    def __init__(self, data_path, hot_exp_ratio=0.4, hot_click_ratio=0.2):
+    def __init__(self, data_path):
         self.data_path = Path(data_path)
         self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
         self.item_num = list(range(1, len(self.item_feat_dict) + 1))
-        item_expression_num,item_click_num = self._load_data_info()
-        self.hot_expression = self.keep_hot_expression_item(item_expression_num)
-        self.hot_click = self.keep_hot_click_item(item_click_num)
-        self.hot_expression_ratio = hot_exp_ratio
-        self.hot_click_ratio = hot_click_ratio
-        print(f"hot expression item: {len(self.hot_expression)}, hot click item: {len(self.hot_click)}")
+        self.popularity = torch.as_tensor(self.calc_poplurity(), dtype=torch.float32)
         
+
+    def calc_poplurity(self, ):
+        item_expression_num,item_click_num = self._load_data_info()
+        popularity = []
+        for k in range(1, len(self.item_feat_dict) + 1):
+            # 计算流行度, 并采用贝叶斯平滑
+            exp = item_expression_num[str(k)]
+            click = item_click_num[str(k)]
+            p = (click + MEAN_CLICK * 1.0) / (exp + MEAN_EXP * 1.0) 
+            popularity.append(p ** const.popularity_coef)
+        return popularity
+                        
     def __len__(self):
         return 0x7FFFFFFF
-    
-    def keep_hot_expression_item(self,item_expression_num):
-        hot_expression_item = []
-        for k,v in item_expression_num.items():
-            if v >= 5:
-                hot_expression_item.append(k)
-        return hot_expression_item
-    
-    def keep_hot_click_item(self,item_click_num):
-        hot_click_item = []
-        for k,v in item_click_num.items():
-            if v == 1:
-                hot_click_item.append(k)
-        return hot_click_item
         
     def _load_data_info(self):
         cache_path = Path(os.environ.get('USER_CACHE_PATH'))
@@ -69,19 +64,14 @@ class HotNegDataset(Dataset):
     def __getitem__(self, index):
         neg_item_reid_list = []
         neg_item_feat_list = []
-        for i in range(256):
-            sampled_id = 0
-            p = random.random()
-            if p < self.hot_click_ratio:
-                sampled_id = random.choice(self.hot_click)
-            elif p < self.hot_expression_ratio:
-                sampled_id = random.choice(self.hot_expression)
-            else:
-                sampled_id = random.choice(self.item_num)
-            
-            neg_item_reid_list.append(sampled_id)
-            neg_item_feat_list.append(self.item_feat_dict[str(sampled_id)])
-            
+        num_sampled_popularity = int(256 * const.popularity_samples_ratio)
+        num_sampled_random = 256 - num_sampled_popularity
+        sampled_id = torch.multinomial(self.popularity, num_sampled_popularity) + 1
+        sampled_id = sampled_id.tolist()  + random.sample(range(1, len(self.item_num) + 1), num_sampled_random)
+        
+        for i in sampled_id:            
+            neg_item_reid_list.append(i)
+            neg_item_feat_list.append(self.item_feat_dict[str(i)])
             
         return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
                                                                                include_user=False, 
@@ -102,7 +92,7 @@ def sample_neg():
     if const.sampling_strategy == 'random':
         dataset = NegDataset(const.data_path)
     elif const.sampling_strategy == 'hot':
-        dataset = HotNegDataset(const.data_path, const.hot_exp_ratio, const.hot_click_ratio)
+        dataset = HotNegDataset(const.data_path)
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
     loader = DataLoader(dataset, 
