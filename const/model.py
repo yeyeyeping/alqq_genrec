@@ -15,19 +15,19 @@ class ModelParam:
             "user_id":64,
             "item_id":64,
             # 物品特征
-            "100": 16,      # 6
-            "101": 16,     # 51
+            "100": 8,      # 6
+            "101": 8,     # 51
             "102": 32,     # 90709
-            "111": 64,    # 4783154
-            "112": 16,     # 30
-            "114": 16,     # 20
-            "115": 16,     # 691
-            "116": 16,     # 18
+            "111": 32,    # 4783154
+            "112": 8,     # 30
+            "114": 8,     # 20
+            "115": 8,     # 691
+            "116": 8,     # 18
             "117": 16,     # 497
             "118": 16,     # 1426
             "119": 24,     # 4191
             "120": 24,     # 3392
-            "121": 24,    # 2135891
+            "121": 32,    # 2135891
             "122": 32,     # 90919
 
             # 多模态特征
@@ -38,14 +38,14 @@ class ModelParam:
             # "85": 128,
             # "86": 128,
             # 用户特征
-            "103": 16,     # 86
-            "104": 16,      # 2
-            "105": 16,      # 7
-            "106": 16,     # 14
-            "107": 16,     # 19
-            "108": 16,      # 4
-            "109": 16,      # 3
-            "110": 16,       # 2
+            "103": 8,     # 86
+            "104": 4,      # 2
+            "105": 4,      # 7
+            "106": 8,     # 14
+            "107": 8,     # 19
+            "108": 4,      # 4
+            "109": 4,      # 3
+            "110": 4,       # 2
             
             "201": 32,# 时间特征
             "202": 16,# weekday
@@ -59,9 +59,13 @@ class ModelParam:
         self.context_dnn_units = 128
         self.dropout = 0.2
         self.hidden_units = 256
-        self.num_blocks = 8
-        self.num_heads = 8
+        self.num_blocks = 16
+        self.num_heads = 4
         self.norm_first = True
+        self.relative_attention_num_buckets = 32
+        self.relative_attention_bucket_dim = 16
+        self.relative_attention_max_distance = 128
+    
     def read_feature_size(self, indexer_file):
         indexer = read_pickle(indexer_file)
         emb_table_size = {}
