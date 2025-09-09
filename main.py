@@ -80,7 +80,7 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     neg_feat['81'] = neg_feat['81'].to(const.device)
     
     user_id = user_id.to(const.device, non_blocking=True)
-    user_feat, item_feat, context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
+    user_feat,action_type, item_feat, context_feat = to_device(user_feat),action_type.to(const.device, non_blocking=True), to_device(item_feat), to_device(context_feat)
     
     # if (hard_neg_bank_id == 0).sum() == 0:
     #     neg_id = torch.cat([hard_neg_bank_id, neg_id])
@@ -100,7 +100,8 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         anchor_emb = F.normalize(next_token_emb[indices[0], indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
         neg_emb = F.normalize(neg_emb, dim=-1)
-        loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, return_logits=True)
+        weight = torch.where(next_action_type[indices[0],indices[1]] == 1, 4.0, 1.0)
+        loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, return_logits=True, weight=weight)
         
         loss += l2_reg_loss(model,const.l2_alpha)
         

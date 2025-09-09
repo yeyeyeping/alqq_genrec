@@ -34,7 +34,7 @@ class MyDataset(Dataset):
         line = self.seq_file_fp.readline()
         data = json.loads(line)
         return data
-
+        
     def format_user_seq(self, user_sequence):
         user_sequence = sorted(user_sequence, key=lambda x: x[-1])
         ext_user_sequence = []
@@ -67,12 +67,12 @@ class MyDataset(Dataset):
         
         delta_scaled = torch.clamp(delta_scaled, max=const.model_param.max_decay)
         out_time_feat = {
-            "201": MyDataset.pad_seq(log_gap, const.max_seq_len, 0),
-            "202": MyDataset.pad_seq(weekdays, const.max_seq_len, 0),
-            "203": MyDataset.pad_seq(hours, const.max_seq_len, 0),
-            "204": MyDataset.pad_seq(months, const.max_seq_len, 0),
-            "205": MyDataset.pad_seq(days, const.max_seq_len, 0),
-            "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len, 0)
+            "201": log_gap,
+            "202": weekdays,
+            "203": hours,
+            "204": months,
+            "205": days,
+            "206": delta_scaled,
             
         }
         return out_time_feat
@@ -153,6 +153,22 @@ class MyDataset(Dataset):
             raise ValueError(f"Invalid sequence type: {type(seq)}")
         
         return pad_value + seq
+    def group_feat_by_key(self, feat_list):
+        feature_name_value_list = defaultdict(list)
+        for feat in feat_list:
+            for feat_id, feat_value in feat.items():
+                feature_name_value_list[feat_id].append(feat_value)
+        out_dict = {}
+        
+        for k, v in feature_name_value_list.items():
+            if k in const.user_feature.array_feature_ids + const.user_feature.sparse_feature_ids  + const.item_feature.sparse_feature_ids + const.context_feature.sparse_feature_ids:
+                out_dict[k] = torch.as_tensor(v, dtype=torch.int32)
+            elif k in const.user_feature.dense_feature_ids + const.item_feature.dense_feature_ids:
+                out_dict[k] = torch.as_tensor(v, dtype=torch.float32)
+            else:
+                print(f"Invalid feature id: {k}")
+                        
+        return out_dict
     
     def seq2feat(self, ext_user_seq):
         item_id_list = []
@@ -182,18 +198,15 @@ class MyDataset(Dataset):
                 
             ts_list.append(ts)
             
-        item_id_list = MyDataset.pad_seq(item_id_list, const.max_seq_len, 0)
-        action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len, 0)
-        seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0, ]*const.context_feature.seq_len)
-        feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
-        front_click_101_list = MyDataset.pad_seq(front_click_101_list, const.max_seq_len, 0)
+        # item_id_list = MyDataset.pad_seq(item_id_list, const.max_seq_len, 0)
+        # action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len, 0)
+        # seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0, ]*const.context_feature.seq_len)
+        # feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
+        # front_click_101_list = MyDataset.pad_seq(front_click_101_list, const.max_seq_len, 0)
         
-        item_feat_dict = MyDataset.collect_features(feat_list,
-                                                    include_item=True, 
-                                                    include_context=False, 
-                                                    include_user=False)
-                
+        item_feat_dict = self.group_feat_by_key(feat_list)
         time_feat = self.add_time_feat(ts_list)
+        breakpoint()
         context_feat = {
             ** time_feat,
             "210": torch.as_tensor(seq_list, dtype=torch.int32),
@@ -307,7 +320,7 @@ class MyTestDataset(MyDataset):
     
 if __name__ == "__main__":
     dataset = MyDataset(data_path='/home/yeep/project/alqq_generc/data/TencentGR_1k')
-    dataloader = DataLoader(dataset, batch_size=10, shuffle=False)
+    dataloader = DataLoader(dataset, batch_size=10, shuffle=False, collate_fn=dataset.collate_fn)
     for d in dataloader:
         breakpoint()
         user_id, user_feat, action_type, item_id, item_feat, context_feat = d 

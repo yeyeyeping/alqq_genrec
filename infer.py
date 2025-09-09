@@ -1,5 +1,5 @@
 import os
-os.system(f"cd {os.environ.get('EVAL_INFER_PATH')};unzip submit_infer.zip; cp -r tmp_infer/* .")
+os.system(f"cd {os.environ.get('EVAL_INFER_PATH')};unzip submit.zip; cp -r submit/* .")
 import json
 from pathlib import Path
 from model import BaselineModel
