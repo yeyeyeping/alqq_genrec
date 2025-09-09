@@ -5,13 +5,13 @@ from pathlib import Path
 
     
 
-data_path = os.environ.get('TRAIN_DATA_PATH')
+data_path = Path(os.environ.get('TRAIN_DATA_PATH'))
 if data_path is None:
     print(f"Training data path is not set, switch to Test data path")
-    data_path = os.environ.get('EVAL_DATA_PATH')
+    data_path = Path(os.environ.get('EVAL_DATA_PATH'))
     if data_path is None:
         raise ValueError("Test data path is not set, please set the EVAL_DATA_PATH environment variable")
-    
+cache_path = Path(os.environ.get('USER_CACHE_PATH'))
 # 数据相关
 mm_emb_dim = {
     "81": 32,
@@ -22,9 +22,10 @@ mm_emb_dim = {
     "86": 3584,
 }
 max_seq_len = 101
-crop_prob = 0.3
-reorder_prob = 0.3
-mask_prob = 0.3
+crop_prob = 1
+reorder_prob = 1
+mask_prob = 1
+similar_prob = 1
 # 训练相关
 l2_alpha = 1e-7
 device = "cuda"

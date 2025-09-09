@@ -198,7 +198,7 @@ if __name__ == '__main__':
     # global dataset
     seed_everything(const.seed)
     
-    dataset = MyDataset(const.data_path)
+    dataset = MyDataset()
     # train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
     train_loader = build_dataloader(dataset, const.batch_size, const.num_workers, True)
     # valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)

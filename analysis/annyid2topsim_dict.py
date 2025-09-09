@@ -10,6 +10,7 @@ def read_pickle(path):
 data_path = Path(os.environ.get('TRAIN_DATA_PATH'))
 cache_path = Path(os.environ.get('USER_CACHE_PATH'))
 
+indexer_file = read_pickle(data_path / "indexer.pkl")
 emb = data_path/"creative_emb"/"emb_81_32.pkl"
 
 id_list = []
@@ -22,12 +23,12 @@ id_tensors = torch.as_tensor(id_list,device=torch.device('cuda'),dtype=torch.int
 emb_tensors = torch.stack(emb_list)
 
 # 分块参数 - 用于控制内存使用，避免一次性加载所有embeddings
-src_chunk_size = 50000  # 源embeddings的chunk大小，每次处理1000个源向量
-emb_chunk_size = 50000  # 目标embeddings的chunk大小，每次计算相似度时目标向量分块大小
+src_chunk_size = 1000  # 源embeddings的chunk大小，每次处理1000个源向量
+emb_chunk_size = 1000  # 目标embeddings的chunk大小，每次计算相似度时目标向量分块大小
 
 top21_list = []
 total_items = len(id_list)
-
+print("find top 20 sim item")
 # 对源embeddings分块处理
 for i in range(0, total_items, src_chunk_size):
     end_i = min(i + src_chunk_size, total_items)
@@ -61,6 +62,7 @@ for i in range(0, total_items, src_chunk_size):
     top21 = id_tensors[top21_global_indices].cpu().tolist()
 
     top21_list.append(top21)
+print("remove self similarity")
 
 # 移除自相似项
 for batch_idx in range(len(top21_list)):
@@ -71,8 +73,18 @@ for batch_idx in range(len(top21_list)):
     for idx, id_ in enumerate(a_id_batch):
         if id_ in top21_list[batch_idx][idx]:
             top21_list[batch_idx][idx].remove(id_)
-        
-annoyied_top21 = dict(zip(id_list, top21_list))       
+
+
+top21 = []
+for i in top21_list:
+    top21.extend(i)
+
+# annoy id to reid
+for idx in range(len(top21)):
+    top21[idx] = [indexer_file['i'][id_] for id_ in top21[idx]]
+    id_list[idx] = indexer_file['i'][id_list[idx]]
+            
+annoyied_top21 = dict(zip(id_list, top21))       
 with open(cache_path/"annoyid2top20sim_dict.pkl", "wb") as f:
     pickle.dump(annoyied_top21, f)
 print(f"save to {cache_path/'annoyid2top20sim_dict.pkl'}")

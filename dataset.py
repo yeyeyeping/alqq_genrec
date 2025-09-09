@@ -1,7 +1,7 @@
 import random
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
-from utils import read_pickle
+from utils import read_pickle, read_json
 import json
 import const
 from collections import defaultdict
@@ -15,14 +15,36 @@ import pandas as pd
 MIN_TS = 1728921670
 MAX_TS = 1748907455
 class MyDataset(Dataset):
-    def __init__(self, data_path): 
+    def __init__(self): 
         super().__init__()
-        self.data_path = Path(data_path)
         self.seq_offsets = self.load_offset()
         self.seq_file_fp = None
+        
+    def get_similar_item(self, item_id, item_feat):
+        if not hasattr(self, 'item_feat_dict'):
+            self.item_feat_dict = self.read_item_feat_dict()
+        
+        if not hasattr(self, 'annoyid2top20sim_dict'):
+            self.annoyid2top20sim_dict = self.read_item_annoyid2top20sim_dict()
+        
+        if item_id not in self.annoyid2top20sim_dict:
+            return item_id, item_feat
+        sim_list = self.annoyid2top20sim_dict[item_id]
+        selected_item_id = random.sample(sim_list, 1)[0]
+        
+        if item_id not in self.item_feat_dict:
+            return item_id, item_feat
+        
+        return selected_item_id, self.item_feat_dict[str(selected_item_id)]
+    
+    def read_item_feat_dict(self):
+        return read_json(const.data_path / 'item_feat_dict.json')
+    
+    def read_item_annoyid2top20sim_dict(self):
+        return read_pickle(const.cache_path / 'annoyid2top20sim_dict.pkl')
     
     def load_offset(self):
-        return read_pickle(self.data_path/'seq_offsets.pkl')
+        return read_pickle(const.data_path/'seq_offsets.pkl')
         
     def __len__(self):
         return len(self.seq_offsets)
@@ -30,7 +52,7 @@ class MyDataset(Dataset):
     def _load_user_data(self, uid):
         # uid时reid后的结果
         if self.seq_file_fp is None:
-            self.seq_file_fp = open(Path(self.data_path, 'seq.jsonl'), 'rb')
+            self.seq_file_fp = open(Path(const.data_path, 'seq.jsonl'), 'rb')
         self.seq_file_fp.seek(self.seq_offsets[uid])
         line = self.seq_file_fp.readline()
         data = json.loads(line)
@@ -77,7 +99,6 @@ class MyDataset(Dataset):
             
         }
         return out_time_feat
-    
     @classmethod
     def fill_feature(cls, 
                      feat,
@@ -111,7 +132,6 @@ class MyDataset(Dataset):
                     filled_feat[feat_id] = feat[feat_id]
                 filled_feat[feat_id] = torch.as_tensor(filled_feat[feat_id])
         return filled_feat
-    
     @classmethod
     def collect_features(cls, 
                          feat_list, 
@@ -198,32 +218,35 @@ class MyDataset(Dataset):
         context_feat = {
             ** time_feat,
             "210": torch.as_tensor(seq_list, dtype=torch.int32),
-            "401": torch.as_tensor(front_click_101_list, dtype=torch.int32)
+            "211": torch.as_tensor(action_type_list.copy(), dtype=torch.int32) + 1,
+            "401": torch.as_tensor(front_click_101_list, dtype=torch.int32),
         }
         return action_type_list, item_id_list, item_feat_dict, context_feat
+    
     def random_crop_seq(self, ext_seq, p):
+        if random.random() > p:
+            return ext_seq
         seq_len = len(ext_seq)
-        
         num_crop = random.randint(seq_len // 20, seq_len // 5)
         # 随机删除5-20%序列
-        if random.random() < p:
-            p = random.random()
+        p = random.random()
+        # 删除前面的5-20%
+        if p < 0.4:
             # 删除前面的5-20%
-            if p < 0.4:
-                # 删除前面的5-20%
-                ext_seq = ext_seq[num_crop:]
-            elif p < 0.8:
-                #随机删除
-                random_removed_idx = random.sample(range(len(ext_seq)), num_crop)
-                # 随机删除但保留点击序列
-                ext_seq = [ext_seq[i] for i in range(len(ext_seq)) if i not in random_removed_idx or ext_seq[i][2] == 1] 
-               
-            else:
-                # 删除后面的5-20%
-                ext_seq = ext_seq[:-num_crop]
+            ext_seq = ext_seq[num_crop:]
+        elif p < 0.8:
+            #随机删除
+            random_removed_idx = random.sample(range(len(ext_seq)), num_crop)
+            # 随机删除但保留点击序列
+            ext_seq = [ext_seq[i] for i in range(len(ext_seq)) if i not in random_removed_idx or ext_seq[i][2] == 1] 
+            
+        else:
+            # 删除后面的5-20%
+            ext_seq = ext_seq[:-num_crop]
         return ext_seq
+
     def seq_reorder(self, ext_seq, p):
-        if random.random() < p:
+        if random.random() > p:
             return ext_seq
         # 只在某个窗口内reorder
         windows_size = random.randint(5, 15)
@@ -238,10 +261,10 @@ class MyDataset(Dataset):
         return ext_seq
     
     def seq_mask(self, ext_seq, p):
-        if random.random() < p:
+        if random.random() > p:
             return ext_seq
         
-        selected_seq = random.sample(ext_seq, int(len(ext_seq) * 0.05))
+        selected_seq = random.sample(ext_seq, int(len(ext_seq) * 0.1))
         for _, feat, _, _ in selected_seq:
             seleted_feat_key = random.sample(list(feat.keys()), 1)
             
@@ -249,10 +272,20 @@ class MyDataset(Dataset):
                 if seleted_feat_key in feat:
                     feat.pop(seleted_feat_key)
         return ext_seq
+    
+    def replace_with_similar_item(self, ext_seq, p):
+        if random.random() > p:
+            return ext_seq
+        for i in range(len(ext_seq)):
+            item_id, feat, action_type, ts = ext_seq[i]
+            if ext_seq[i][2] != 1 and random.random() < 0.1:
+                similar_item_id, similar_item_feat = self.get_similar_item(item_id, feat)
+                ext_seq[i] = (similar_item_id, similar_item_feat, action_type, ts)
+        return ext_seq
+    
     def aug_seq(self, ext_seq):
         if len(ext_seq) < 30:
             return ext_seq
-        
         # 随机crop序列
         ext_seq = self.random_crop_seq(ext_seq, const.crop_prob)
        
@@ -263,9 +296,8 @@ class MyDataset(Dataset):
         ext_seq = self.seq_mask(ext_seq, const.mask_prob)
         
         # 随机替换为相似item
-        return ext_seq
-                
-        
+        ext_seq = self.replace_with_similar_item(ext_seq, const.similar_prob)
+        return ext_seq     
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
         user_id, user_feat, ext_user_seq = self.format_user_seq(user_seq)
@@ -283,9 +315,9 @@ class MyDataset(Dataset):
 
         
 class MyTestDataset(MyDataset):
-    def __init__(self, data_path):
-        super().__init__(data_path)
-        self.indexer = read_pickle(self.data_path / 'indexer.pkl')
+    def __init__(self):
+        super().__init__()
+        self.indexer = read_pickle(const.data_path / 'indexer.pkl')
         self.indexer_u_rev = {v: k for k, v in self.indexer['u'].items()}
         
         self.itemnum = len(self.indexer['i'])
@@ -293,7 +325,7 @@ class MyTestDataset(MyDataset):
     
     
     def load_offset(self):
-        return read_pickle(self.data_path / 'predict_seq_offsets.pkl')
+        return read_pickle(const.data_path / 'predict_seq_offsets.pkl')
     
     def __len__(self):
         return len(self.seq_offsets)
@@ -301,7 +333,7 @@ class MyTestDataset(MyDataset):
     def _load_user_data(self, uid):
         # uid时reid后的结果
         if self.seq_file_fp is None:
-            self.seq_file_fp = open(self.data_path / 'predict_seq.jsonl', 'rb')
+            self.seq_file_fp = open(const.data_path / 'predict_seq.jsonl', 'rb')
         self.seq_file_fp.seek(self.seq_offsets[uid])
         line = self.seq_file_fp.readline()
         data = json.loads(line)
@@ -371,10 +403,9 @@ class MyTestDataset(MyDataset):
                 context_feat
     
 if __name__ == "__main__":
-    dataset = MyDataset(data_path='/home/yeep/project/alqq_generc/data/TencentGR_1k')
+    dataset = MyDataset()
     dataloader = DataLoader(dataset, batch_size=10, shuffle=False)
     for d in dataloader:
-        breakpoint()
         user_id, user_feat, action_type, item_id, item_feat, context_feat = d 
 
 

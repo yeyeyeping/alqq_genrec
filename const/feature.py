@@ -72,6 +72,7 @@ class ContextFeature:
             "204",
             "205",
             "206",
+            "211"
         )
         self.seq_len = 10
         self.array_feature_ids = ("210")
