@@ -20,10 +20,9 @@ for k, v in read_pickle(emb).items():
         emb_list.append(torch.as_tensor(v, dtype=torch.float32,device=torch.device('cuda')))
 id_tensors = torch.as_tensor(id_list,device=torch.device('cuda'),dtype=torch.int64)
 emb_tensors = torch.stack(emb_list)
-
 # 分块参数 - 用于控制内存使用，避免一次性加载所有embeddings
-src_chunk_size = 50000  # 源embeddings的chunk大小，每次处理1000个源向量
-emb_chunk_size = 50000  # 目标embeddings的chunk大小，每次计算相似度时目标向量分块大小
+src_chunk_size = 1000  # 源embeddings的chunk大小，每次处理1000个源向量
+emb_chunk_size = 1000  # 目标embeddings的chunk大小，每次计算相似度时目标向量分块大小
 
 top21_list = []
 total_items = len(id_list)

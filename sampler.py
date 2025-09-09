@@ -36,7 +36,7 @@ class HotNegDataset(Dataset):
     def __init__(self, data_path):
         self.data_path = Path(data_path)
         self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
-        self.item_num = list(range(1, len(self.item_feat_dict) + 1))
+        self.item_ids = list(range(1, len(self.item_feat_dict) + 1))
         self.popularity = torch.as_tensor(self.calc_poplurity(), dtype=torch.float32)
         
 
@@ -67,7 +67,7 @@ class HotNegDataset(Dataset):
         num_sampled_popularity = int(256 * const.popularity_samples_ratio)
         num_sampled_random = 256 - num_sampled_popularity
         sampled_id = torch.multinomial(self.popularity, num_sampled_popularity) + 1
-        sampled_id = sampled_id.tolist()  + random.sample(range(1, len(self.item_num) + 1), num_sampled_random)
+        sampled_id = sampled_id.tolist()  + random.sample(self.item_ids, num_sampled_random)
         
         for i in sampled_id:            
             neg_item_reid_list.append(i)
