@@ -21,20 +21,56 @@ for k, v in read_pickle(emb).items():
 id_tensors = torch.as_tensor(id_list,device=torch.device('cuda'),dtype=torch.int64)
 emb_tensors = torch.stack(emb_list)
 
-chunk_size = 1000
+# 分块参数 - 用于控制内存使用，避免一次性加载所有embeddings
+src_chunk_size = 50000  # 源embeddings的chunk大小，每次处理1000个源向量
+emb_chunk_size = 50000  # 目标embeddings的chunk大小，每次计算相似度时目标向量分块大小
+
 top21_list = []
-for i in range(0, len(id_list), chunk_size):
-    emb_src = emb_tensors[i:i+chunk_size]
-    a_id = id_tensors[i:i+chunk_size]
-    sim_mat = emb_src @ emb_tensors.T
-    
-    _, indices = torch.topk(sim_mat, k=21, dim=1)
-    top21 = id_tensors[indices].cpu().tolist()
+total_items = len(id_list)
+
+# 对源embeddings分块处理
+for i in range(0, total_items, src_chunk_size):
+    end_i = min(i + src_chunk_size, total_items)
+    emb_src = emb_tensors[i:end_i]
+    a_id = id_tensors[i:end_i]
+
+    # 初始化相似度矩阵和索引矩阵
+    all_similarities = []
+    all_indices = []
+
+    # 对目标embeddings分块计算相似度
+    for j in range(0, total_items, emb_chunk_size):
+        end_j = min(j + emb_chunk_size, total_items)
+        emb_target = emb_tensors[j:end_j]
+
+        # 计算当前chunk的相似度
+        sim_chunk = emb_src @ emb_target.T
+        all_similarities.append(sim_chunk)
+
+        # 创建对应的索引（全局索引）
+        indices_chunk = torch.arange(j, end_j, device=sim_chunk.device).unsqueeze(0).expand(sim_chunk.shape[0], -1)
+        all_indices.append(indices_chunk)
+
+    # 拼接所有相似度chunks
+    full_sim_mat = torch.cat(all_similarities, dim=1)
+    full_indices_mat = torch.cat(all_indices, dim=1)
+
+    # 找到top21（包含自己）
+    _, topk_indices = torch.topk(full_sim_mat, k=21, dim=1)
+    top21_global_indices = full_indices_mat.gather(1, topk_indices)
+    top21 = id_tensors[top21_global_indices].cpu().tolist()
+
     top21_list.append(top21)
-    
-for idx, id_ in enumerate(a_id.tolist()):
-    if id_ in top21[idx]:
-        top21[idx].remove(id_)
+
+# 移除自相似项
+for batch_idx in range(len(top21_list)):
+    start_i = batch_idx * src_chunk_size
+    end_i = min((batch_idx + 1) * src_chunk_size, total_items)
+    a_id_batch = id_list[start_i:end_i]
+
+    for idx, id_ in enumerate(a_id_batch):
+        if id_ in top21_list[batch_idx][idx]:
+            top21_list[batch_idx][idx].remove(id_)
         
 annoyied_top21 = dict(zip(id_list, top21_list))       
 with open(cache_path/"annoyid2top20sim_dict.pkl", "wb") as f:
