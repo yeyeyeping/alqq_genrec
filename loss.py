@@ -15,7 +15,7 @@ def info_nce_loss(anchor_emb, pos_emb, neg_emb, temperature, weight=None, return
     # 加权损失
     if weight is not None:
         loss = loss * weight
-    loss = loss.mean()
+    loss = loss.sum() / weight.sum()
     
     if return_logits:
         return loss, neg_logits.mean().item(), true_logits.mean().item(), logits
