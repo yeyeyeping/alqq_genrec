@@ -13,6 +13,7 @@ from dataset import MyDataset
 from model.model import BaselineModel
 from torch.amp import autocast, GradScaler
 from timm.scheduler import CosineLRScheduler
+import random
 from torch.nn import functional as F
 from utils import seed_everything, seed_worker
 from loss import info_nce_loss,l2_reg_loss,selfsup_infonce
@@ -97,7 +98,7 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         
         input_ids, input_action_type, input_feat, context_feat,next_ids, next_action_type, next_feat \
                     = make_input_and_label(item_id, action_type, item_feat, context_feat)
-        next_token_emb = model(user_id, user_feat, input_ids, input_feat, context_feat)
+        next_token_emb,user_feat_emb,item_feat_emb = model(user_id, user_feat, input_ids, input_feat, context_feat)
         
         neg_emb = model.item_tower(neg_id, neg_feat)
         
@@ -113,9 +114,10 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         
         neg_aug_emb = F.normalize(neg_aug_emb, dim=-1)
         
-        selfsup_loss = selfsup_infonce(neg_emb, neg_aug_emb, const.temperature)
+        selfsup_loss = selfsup_infonce(neg_emb, neg_aug_emb, const.temperature, 100)
         
         loss += selfsup_loss * 0.1
+            
         loss += l2_reg_loss(model,const.l2_alpha)
         
         with torch.no_grad():

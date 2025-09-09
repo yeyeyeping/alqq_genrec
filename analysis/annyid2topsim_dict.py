@@ -3,6 +3,8 @@ import os
 import numpy as np
 import pickle
 import torch
+import time
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 def read_pickle(path):
     with open(path, 'rb') as f:
         return pickle.load(f)
@@ -20,46 +22,32 @@ for k, v in read_pickle(emb).items():
         emb_list.append(torch.as_tensor(v, dtype=torch.float32,device=torch.device('cuda')))
 id_tensors = torch.as_tensor(id_list,device=torch.device('cuda'),dtype=torch.int64)
 emb_tensors = torch.stack(emb_list)
-
 # 分块参数 - 用于控制内存使用，避免一次性加载所有embeddings
-src_chunk_size = 50000  # 源embeddings的chunk大小，每次处理1000个源向量
-emb_chunk_size = 50000  # 目标embeddings的chunk大小，每次计算相似度时目标向量分块大小
+src_chunk_size = 4000  # 源embeddings的chunk大小，每次处理1000个源向量
+emb_chunk_size = 60000  # 目标embeddings的chunk大小，每次计算相似度时目标向量分块大小
 
 top21_list = []
 total_items = len(id_list)
 
-# 对源embeddings分块处理
 for i in range(0, total_items, src_chunk_size):
+    t = time.time()
     end_i = min(i + src_chunk_size, total_items)
     emb_src = emb_tensors[i:end_i]
     a_id = id_tensors[i:end_i]
 
-    # 初始化相似度矩阵和索引矩阵
     all_similarities = []
-    all_indices = []
-
     # 对目标embeddings分块计算相似度
     for j in range(0, total_items, emb_chunk_size):
         end_j = min(j + emb_chunk_size, total_items)
         emb_target = emb_tensors[j:end_j]
-
-        # 计算当前chunk的相似度
-        sim_chunk = emb_src @ emb_target.T
-        all_similarities.append(sim_chunk)
-
-        # 创建对应的索引（全局索引）
-        indices_chunk = torch.arange(j, end_j, device=sim_chunk.device).unsqueeze(0).expand(sim_chunk.shape[0], -1)
-        all_indices.append(indices_chunk)
-
-    # 拼接所有相似度chunks
-    full_sim_mat = torch.cat(all_similarities, dim=1)
-    full_indices_mat = torch.cat(all_indices, dim=1)
-
-    # 找到top21（包含自己）
-    _, topk_indices = torch.topk(full_sim_mat, k=21, dim=1)
-    top21_global_indices = full_indices_mat.gather(1, topk_indices)
-    top21 = id_tensors[top21_global_indices].cpu().tolist()
-
+        with torch.amp.autocast(device_type='cuda', dtype=torch.bfloat16):
+            sim_chunk = emb_src @ emb_target.T
+        all_similarities.append(sim_chunk.cpu())
+    full_sim_mat = torch.cat(all_similarities, dim=1).to("cuda")
+    _, topk_indices = torch.topk(full_sim_mat, k=20, dim=1)
+    
+    top21 = id_tensors[topk_indices].cpu().tolist()
+    print(f"time cost: {time.time() - t}")
     top21_list.append(top21)
 
 # 移除自相似项

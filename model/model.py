@@ -211,16 +211,16 @@ class BaselineModel(nn.Module):
     
     
     def forward_all_feat(self, user_id, user_feat,input_ids, input_feat, context_feat):
-        item_feat = self.item_tower(input_ids, input_feat)
-        user_feat = self.user_tower(user_id, user_feat)
+        item_feat_emb = self.item_tower(input_ids, input_feat)
+        user_feat_emb = self.user_tower(user_id, user_feat)        
         context_feat = self.context_tower(context_feat)
-        seq_feat = torch.cat([item_feat, user_feat[:,None].repeat(1,item_feat.shape[1],1),context_feat], dim=-1)
+        seq_feat = torch.cat([item_feat_emb, user_feat_emb[:,None].repeat(1,item_feat_emb.shape[1],1),context_feat], dim=-1)
         seq_feat = self.context_dnn(seq_feat)
-        return self.merge_dnn(seq_feat)
+        return self.merge_dnn(seq_feat),user_feat_emb,item_feat_emb
     
         
     def forward(self, user_id, user_feat, input_ids, input_feat, context_feat):
-        emb = self.forward_all_feat(user_id, user_feat,input_ids, input_feat, context_feat)
+        emb,user_feat_emb,item_feat_emb = self.forward_all_feat(user_id, user_feat,input_ids, input_feat, context_feat)
         feat = self.emb_dropout(emb)
         
         maxlen = input_ids.shape[1]
@@ -231,4 +231,4 @@ class BaselineModel(nn.Module):
         attention_mask = attention_mask_tril.unsqueeze(0) & attention_mask_pad.unsqueeze(1)
         
         log_feats = self.casual_attention_layers(feat, attention_mask)
-        return log_feats
+        return log_feats,user_feat_emb,item_feat_emb
