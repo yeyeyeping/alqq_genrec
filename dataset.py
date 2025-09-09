@@ -67,12 +67,12 @@ class MyDataset(Dataset):
         
         delta_scaled = torch.clamp(delta_scaled, max=const.model_param.max_decay)
         out_time_feat = {
-            "201": log_gap,
-            "202": weekdays,
-            "203": hours,
-            "204": months,
-            "205": days,
-            "206": delta_scaled,
+            "201": log_gap.tolist(),
+            "202": weekdays.tolist(),
+            "203": hours.tolist(),
+            "204": months.tolist(),
+            "205": days.tolist(),
+            "206": delta_scaled.tolist(),
             
         }
         return out_time_feat
@@ -138,6 +138,10 @@ class MyDataset(Dataset):
     @classmethod
     def pad_seq(cls, seq, seq_len, pad_value):
         pad_len = seq_len - len(seq)
+        
+        if len(seq) > 0 and isinstance(seq[0], list):
+            pad_value = [pad_value, ]* len(seq[0])
+            
         if isinstance(seq, list):
             if pad_len <= 0:
                 return seq[:seq_len]
@@ -182,7 +186,7 @@ class MyDataset(Dataset):
         for i, feat, action_type, ts in ext_user_seq:
             item_id_list.append(i)
             action_type_list.append(action_type if action_type is not None else 0)
-            feat_list.append(feat)
+            feat_list.append(MyDataset.fill_feature(feat, include_item=True, include_context=False,include_user=False))
             
             clicked_item_list = list(front_click_item)
             click_seq = MyDataset.pad_seq(clicked_item_list[-const.context_feature.seq_len:].copy(), 
@@ -206,11 +210,10 @@ class MyDataset(Dataset):
         
         item_feat_dict = self.group_feat_by_key(feat_list)
         time_feat = self.add_time_feat(ts_list)
-        breakpoint()
         context_feat = {
             ** time_feat,
-            "210": torch.as_tensor(seq_list, dtype=torch.int32),
-            "401": torch.as_tensor(front_click_101_list, dtype=torch.int32)
+            "210": seq_list,
+            "401": front_click_101_list
         }
         return action_type_list, item_id_list, item_feat_dict, context_feat
     
@@ -225,11 +228,25 @@ class MyDataset(Dataset):
         
         action_type_list, item_id_list, item_feat_dict, context_feat = self.seq2feat(ext_user_seq)
         
-        return torch.as_tensor(user_id,dtype=torch.int32), user_feat,\
-            torch.as_tensor(action_type_list, dtype=torch.bool), \
-            torch.as_tensor(item_id_list, dtype=torch.int32), item_feat_dict, context_feat
-
+        return user_id, user_feat,\
+            action_type_list, \
+            item_id_list, item_feat_dict, context_feat
+    
+    @classmethod
+    def collate_fn(cls,batch):
+        user_id_list, user_feat_list, action_type_list, item_id_list, item_feat_dict_list, context_feat_list = zip(*batch)
+        max_seq_len = max(len(c) for c in action_type_list)
         
+        user_id = torch.as_tensor(user_id_list)
+        user_feat = {k: torch.stack([torch.as_tensor(v[k]) for v in user_feat_list]) for k in user_feat_list[0].keys()}
+        action_type = torch.stack([torch.as_tensor(MyDataset.pad_seq(a, max_seq_len, 0)) for a in action_type_list])
+        item_id = torch.stack([torch.as_tensor(MyDataset.pad_seq(a, max_seq_len, 0)) for a in item_id_list])
+        item_feat = {k: torch.stack([torch.as_tensor(MyDataset.pad_seq(v[k],max_seq_len,0)) for v in item_feat_dict_list]) for k in item_feat_dict_list[0].keys()}
+
+        context_feat = {k: torch.stack([torch.as_tensor(MyDataset.pad_seq(v[k],max_seq_len,0)) for v in context_feat_list]) for k in context_feat_list[0].keys()}
+        
+        return user_id, user_feat, action_type, item_id, item_feat, context_feat
+           
 class MyTestDataset(MyDataset):
     def __init__(self, data_path):
         super().__init__(data_path)
@@ -313,11 +330,26 @@ class MyTestDataset(MyDataset):
                                            include_context=False)
         action_type_list, item_id_list, item_feat_dict, context_feat = self.seq2feat(ext_user_sequence)
         
-        return str_user_id, torch.as_tensor(user_id,dtype=torch.int32), user_feat,\
-            torch.as_tensor(action_type_list, dtype=torch.bool), \
-            torch.as_tensor(item_id_list, dtype=torch.int32), item_feat_dict,\
+        return str_user_id, user_id, user_feat,\
+            action_type_list, \
+            item_id_list, item_feat_dict,\
                 context_feat
-    
+
+    @classmethod
+    def collate_fn(cls, batch):
+        str_user_id, user_id_list, user_feat_list, action_type_list, item_id_list, item_feat_dict_list, context_feat_list = zip(*batch)
+        max_seq_len = max(len(c) for c in action_type_list)
+        
+        user_id = torch.as_tensor(user_id_list)
+        user_feat = {k: torch.stack([torch.as_tensor(v[k]) for v in user_feat_list]) for k in user_feat_list[0].keys()}
+        action_type = torch.stack([torch.as_tensor(MyDataset.pad_seq(a, max_seq_len, 0)) for a in action_type_list])
+        item_id = torch.stack([torch.as_tensor(MyDataset.pad_seq(a, max_seq_len, 0)) for a in item_id_list])
+        item_feat = {k: torch.stack([torch.as_tensor(MyDataset.pad_seq(v[k],max_seq_len,0)) for v in item_feat_dict_list]) for k in item_feat_dict_list[0].keys()}
+
+        context_feat = {k: torch.stack([torch.as_tensor(MyDataset.pad_seq(v[k],max_seq_len,0)) for v in context_feat_list]) for k in context_feat_list[0].keys()}
+        
+        return str_user_id, user_id, user_feat, action_type, item_id, item_feat, context_feat
+
 if __name__ == "__main__":
     dataset = MyDataset(data_path='/home/yeep/project/alqq_generc/data/TencentGR_1k')
     dataloader = DataLoader(dataset, batch_size=10, shuffle=False, collate_fn=dataset.collate_fn)

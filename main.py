@@ -28,6 +28,7 @@ def build_dataloader(dataset, batch_size, num_workers, shuffle):
         pin_memory=True,
         persistent_workers=True,
         worker_init_fn=seed_worker,
+        collate_fn=dataset.collate_fn
     )
 
 def apply_model_init(model:BaselineModel):

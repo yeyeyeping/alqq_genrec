@@ -75,6 +75,7 @@ def infer():
                             batch_size=4096,  # 使用正确的512 
                             num_workers=16, 
                             pin_memory=True,
+                            collate_fn=MyTestDataset.collate_fn,
                             persistent_workers=True,  # 保持worker存活
                             prefetch_factor=4)  # 预取4个batch
     

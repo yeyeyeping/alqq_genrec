@@ -1,4 +1,8 @@
 rm *.zip
+
+export EVAL_DATA_PATH=/home/yeep/project/alqq_generc/data/test_data
+export MODEL_OUTPUT_PATH=/home/yeep/project/alqq_generc/working_dir/ckpt/epoch=4_global_step=28.training_loss=13.0937.top1_correct=0.0000.top10_correct=0.0008.entropy=nan
+
 export TRAIN_DATA_PATH=/home/yeep/project/algo_qq/data/TencentGR_1k
 CUR=$(pwd)
 export TRAIN_TF_EVENTS_PATH=$CUR/working_dir/tensorboard
