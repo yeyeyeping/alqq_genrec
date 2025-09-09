@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pickle
 import torch
+import gc
 def read_pickle(path):
     with open(path, 'rb') as f:
         return pickle.load(f)
@@ -23,8 +24,8 @@ id_tensors = torch.as_tensor(id_list,device=torch.device('cuda'),dtype=torch.int
 emb_tensors = torch.stack(emb_list)
 
 # 分块参数 - 用于控制内存使用，避免一次性加载所有embeddings
-src_chunk_size = 1000  # 源embeddings的chunk大小，每次处理1000个源向量
-emb_chunk_size = 1000  # 目标embeddings的chunk大小，每次计算相似度时目标向量分块大小
+src_chunk_size = 20000  # 源embeddings的chunk大小，每次处理1000个源向量
+emb_chunk_size = 60000  # 目标embeddings的chunk大小，每次计算相似度时目标向量分块大小
 
 top21_list = []
 total_items = len(id_list)
@@ -43,9 +44,9 @@ for i in range(0, total_items, src_chunk_size):
     for j in range(0, total_items, emb_chunk_size):
         end_j = min(j + emb_chunk_size, total_items)
         emb_target = emb_tensors[j:end_j]
-
+        with torch.amp.autocast(device_type='cuda', dtype=torch.bfloat16):
         # 计算当前chunk的相似度
-        sim_chunk = emb_src @ emb_target.T
+            sim_chunk = emb_src @ emb_target.T
         all_similarities.append(sim_chunk)
 
         # 创建对应的索引（全局索引）
@@ -60,7 +61,8 @@ for i in range(0, total_items, src_chunk_size):
     _, topk_indices = torch.topk(full_sim_mat, k=21, dim=1)
     top21_global_indices = full_indices_mat.gather(1, topk_indices)
     top21 = id_tensors[top21_global_indices].cpu().tolist()
-
+    del sim_chunk, indices_chunk, full_sim_mat, full_indices_mat, top21_global_indices, topk_indices
+    gc.collect()
     top21_list.append(top21)
 print("remove self similarity")
 

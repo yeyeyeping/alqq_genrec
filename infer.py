@@ -68,9 +68,9 @@ def next_batched_item(indexer, batch_size=512):
 def infer():
     torch.set_grad_enabled(False)
     
-    data_path = os.environ.get('EVAL_DATA_PATH')
+    data_path = Path(os.environ.get('EVAL_DATA_PATH'))
     # 加载数据
-    test_dataset = MyTestDataset(data_path=data_path)
+    test_dataset = MyTestDataset(data_path)
     dataloader = DataLoader(test_dataset,
                             batch_size=4096,  # 使用正确的512 
                             num_workers=16, 
@@ -110,6 +110,7 @@ def infer():
     t = time.time()
     print(f"start to predict {len(dataloader) * dataloader.batch_size} user seqs")
     for str_user_id, user_id, user_feat, action_type, item_id, item_feat, context_feat in dataloader:
+        breakpoint()
         item_feat = emb_loader.add_mm_emb(item_id, item_feat)
         user_id,item_id = user_id.to(const.device), item_id.to(const.device)
         user_feat, item_feat,context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)

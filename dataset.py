@@ -15,18 +15,16 @@ import pandas as pd
 MIN_TS = 1728921670
 MAX_TS = 1748907455
 class MyDataset(Dataset):
-    def __init__(self): 
+    def __init__(self,data_path, enable_aug=True): 
         super().__init__()
+        self.data_path = data_path
         self.seq_offsets = self.load_offset()
         self.seq_file_fp = None
-        
-    def get_similar_item(self, item_id, item_feat):
-        if not hasattr(self, 'item_feat_dict'):
+        if enable_aug:
             self.item_feat_dict = self.read_item_feat_dict()
-        
-        if not hasattr(self, 'annoyid2top20sim_dict'):
             self.annoyid2top20sim_dict = self.read_item_annoyid2top20sim_dict()
         
+    def get_similar_item(self, item_id, item_feat):
         if item_id not in self.annoyid2top20sim_dict:
             return item_id, item_feat
         sim_list = self.annoyid2top20sim_dict[item_id]
@@ -38,13 +36,13 @@ class MyDataset(Dataset):
         return selected_item_id, self.item_feat_dict[str(selected_item_id)]
     
     def read_item_feat_dict(self):
-        return read_json(const.data_path / 'item_feat_dict.json')
+        return read_json(self.data_path / 'item_feat_dict.json')
     
     def read_item_annoyid2top20sim_dict(self):
         return read_pickle(const.cache_path / 'annoyid2top20sim_dict.pkl')
     
     def load_offset(self):
-        return read_pickle(const.data_path/'seq_offsets.pkl')
+        return read_pickle(self.data_path/'seq_offsets.pkl')
         
     def __len__(self):
         return len(self.seq_offsets)
@@ -52,7 +50,7 @@ class MyDataset(Dataset):
     def _load_user_data(self, uid):
         # uid时reid后的结果
         if self.seq_file_fp is None:
-            self.seq_file_fp = open(Path(const.data_path, 'seq.jsonl'), 'rb')
+            self.seq_file_fp = open(Path(self.data_path, 'seq.jsonl'), 'rb')
         self.seq_file_fp.seek(self.seq_offsets[uid])
         line = self.seq_file_fp.readline()
         data = json.loads(line)
@@ -315,9 +313,10 @@ class MyDataset(Dataset):
 
         
 class MyTestDataset(MyDataset):
-    def __init__(self):
-        super().__init__()
-        self.indexer = read_pickle(const.data_path / 'indexer.pkl')
+    def __init__(self, data_path):
+        super().__init__(data_path,enable_aug=False)
+        self.data_path = data_path
+        self.indexer = read_pickle(self.data_path / 'indexer.pkl')
         self.indexer_u_rev = {v: k for k, v in self.indexer['u'].items()}
         
         self.itemnum = len(self.indexer['i'])
@@ -325,7 +324,7 @@ class MyTestDataset(MyDataset):
     
     
     def load_offset(self):
-        return read_pickle(const.data_path / 'predict_seq_offsets.pkl')
+        return read_pickle(self.data_path / 'predict_seq_offsets.pkl')
     
     def __len__(self):
         return len(self.seq_offsets)
@@ -333,7 +332,7 @@ class MyTestDataset(MyDataset):
     def _load_user_data(self, uid):
         # uid时reid后的结果
         if self.seq_file_fp is None:
-            self.seq_file_fp = open(const.data_path / 'predict_seq.jsonl', 'rb')
+            self.seq_file_fp = open(self.data_path / 'predict_seq.jsonl', 'rb')
         self.seq_file_fp.seek(self.seq_offsets[uid])
         line = self.seq_file_fp.readline()
         data = json.loads(line)
@@ -403,7 +402,7 @@ class MyTestDataset(MyDataset):
                 context_feat
     
 if __name__ == "__main__":
-    dataset = MyDataset()
+    dataset = MyDataset(const.data_path)
     dataloader = DataLoader(dataset, batch_size=10, shuffle=False)
     for d in dataloader:
         user_id, user_feat, action_type, item_id, item_feat, context_feat = d 
