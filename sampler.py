@@ -13,7 +13,13 @@ class NegDataset(Dataset):
     def __init__(self, data_path):
         self.data_path = Path(data_path)
         self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
-        self.item_num = list(range(1, len(self.item_feat_dict) + 1))
+        # 连续 item id: [1, N]
+        self._num_items = len(self.item_feat_dict)
+        # 使用张量缓冲区实现接近“无放回”的均匀采样，避免 Python random 开销
+        self._uni_buffer_size = max(2_000_000, 256 * 1024)
+        self._uni_buffer = None
+        self._uni_ptr = 0
+        self._refill_uniform_buffer()
         
     def __len__(self):
         return 0x7FFFFFFF
@@ -21,7 +27,9 @@ class NegDataset(Dataset):
     def __getitem__(self, index):
         neg_item_reid_list = []
         neg_item_feat_list = []
-        for i in random.sample(self.item_num, 256):
+        # 从缓冲区取样，近似无放回（去重不足部分再补齐）
+        sampled_id = self._draw_uniform_ids(256)
+        for i in sampled_id.tolist():
             neg_item_reid_list.append(i)
             neg_item_feat_list.append(self.item_feat_dict[str(i)])
             
@@ -29,7 +37,32 @@ class NegDataset(Dataset):
                                                                                include_item=True, 
                                                                                include_context=False, 
                                                                                include_user=False)
+    def _refill_uniform_buffer(self):
+        # 大批量有放回均匀采样，后续在 batch 级别去重
+        self._uni_buffer = torch.randint(1, self._num_items + 1, (self._uni_buffer_size,), dtype=torch.long)
+        self._uni_ptr = 0
 
+    def _draw_uniform_ids(self, k: int) -> torch.Tensor:
+        if k <= 0:
+            return torch.empty(0, dtype=torch.long)
+        # 若缓冲区不够则补充
+        if self._uni_ptr + k > self._uni_buffer.numel():
+            self._refill_uniform_buffer()
+        out = self._uni_buffer[self._uni_ptr:self._uni_ptr + k]
+        self._uni_ptr += k
+        # 尽量无放回：去重，不足部分从缓冲区补齐一次
+        if out.numel() > 1:
+            uniq = torch.unique(out, sorted=False)
+            if uniq.numel() < k:
+                need = k - uniq.numel()
+                if self._uni_ptr + need > self._uni_buffer.numel():
+                    self._refill_uniform_buffer()
+                supplement = self._uni_buffer[self._uni_ptr:self._uni_ptr + need]
+                self._uni_ptr += need
+                out = torch.cat([uniq, supplement], dim=0)
+            else:
+                out = uniq[:k]
+        return out
 class HotNegDataset(Dataset):
     def __init__(self, data_path, hot_exp_ratio=0.4, hot_click_ratio=0.2):
         self.data_path = Path(data_path)
