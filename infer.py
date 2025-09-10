@@ -109,15 +109,29 @@ def infer():
     top10_item_ids = []
     t = time.time()
     print(f"start to predict {len(dataloader) * dataloader.batch_size} user seqs")
-    for str_user_id, user_id, user_feat, action_type, item_id, item_feat, context_feat in dataloader:
+    def predict(user_id, user_feat, feat):
+        item_id, item_feat, context_feat = feat
         item_feat = emb_loader.add_mm_emb(item_id, item_feat)
         user_id,item_id = user_id.to(const.device), item_id.to(const.device)
-        user_feat, item_feat,context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
-        
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
             next_token_emb = model(user_id, user_feat,item_id, item_feat, context_feat)
             next_token_emb = F.normalize(next_token_emb[:,-1,:], dim=-1)
-            sim = next_token_emb @ item_features_tensor.T
+        return next_token_emb
+    sim_list = []
+    for str_user_id, user_id, user_feat, item_feat1,item_feat2, item_feat3 in dataloader:
+        
+        next_token_emb = predict(user_id, user_feat, item_feat1)
+        next_token_emb2 = predict(user_id, user_feat, item_feat2)
+        next_token_emb3 = predict(user_id, user_feat, item_feat3)
+        
+        sim12 = torch.sum(next_token_emb * next_token_emb2, dim=-1)
+        sim13 = torch.sum(next_token_emb * next_token_emb3, dim=-1)
+        sim23 = torch.sum(next_token_emb2 * next_token_emb3, dim=-1)
+        sim_list += sim12.cpu().tolist() + sim13.cpu().tolist() + sim23.cpu().tolist()
+        
+        
+        
+        sim = next_token_emb @ item_features_tensor.T
         
         _, indices = torch.topk(sim, k = 10)
         top10_item_ids += item_creative_id_tensor[indices.cpu()].tolist()

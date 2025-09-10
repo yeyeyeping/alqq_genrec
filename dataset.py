@@ -8,6 +8,7 @@ from collections import defaultdict
 import torch
 from datetime import datetime
 import pandas as pd
+import copy
 
 # from torch.utils.data._utils.collate import default_collate
 # import numpy as np
@@ -295,6 +296,7 @@ class MyDataset(Dataset):
                 continue
             ext_seq[i] = (ext_seq[i][0], {}, ext_seq[i][2], ext_seq[i][3])
         return ext_seq
+    
     def aug_seq(self, ext_seq):
         if len(ext_seq) < 30:
             return ext_seq
@@ -410,12 +412,22 @@ class MyTestDataset(MyDataset):
                                            include_user=True, 
                                            include_item=False, 
                                            include_context=False)
-        action_type_list, item_id_list, item_feat_dict, context_feat = self.seq2feat(ext_user_sequence)
+        action_type_list1, item_id_list1, item_feat_dict1, context_feat1 = self.seq2feat(ext_user_sequence)
+        seq2 = self.aug_seq(copy.deepcopy(ext_user_sequence))
+        action_type_list2, item_id_list2, item_feat_dict2, context_feat2 = self.seq2feat(seq2)
+        seq3 = self.aug_seq(copy.deepcopy(ext_user_sequence))
+        action_type_list3, item_id_list3, item_feat_dict3, context_feat3 = self.seq2feat(seq3)
         
         return str_user_id, torch.as_tensor(user_id,dtype=torch.int32), user_feat,\
-            torch.as_tensor(action_type_list, dtype=torch.bool), \
-            torch.as_tensor(item_id_list, dtype=torch.int32), item_feat_dict,\
-                context_feat
+            (torch.as_tensor(action_type_list1, dtype=torch.bool), \
+            torch.as_tensor(item_id_list1, dtype=torch.int32), item_feat_dict1,\
+                context_feat1),\
+            (torch.as_tensor(action_type_list2, dtype=torch.bool), \
+            torch.as_tensor(item_id_list2, dtype=torch.int32), item_feat_dict2,\
+                context_feat2),\
+            (torch.as_tensor(action_type_list3, dtype=torch.bool), \
+            torch.as_tensor(item_id_list3, dtype=torch.int32), item_feat_dict3,\
+                context_feat3)  
     
 if __name__ == "__main__":
     dataset = MyDataset(const.data_path)
