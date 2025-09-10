@@ -21,10 +21,12 @@ mm_emb_dim = {
     "86": 3584,
 }
 max_seq_len = 101
-crop_prob = 1
-reorder_prob = 1
-mask_prob = 1
-similar_prob = 1
+# 随机数据增强
+crop_prob = 0.2
+reorder_prob = 0.4
+mask_prob = 0.2
+# similar_prob = 1
+empty_feat_prob = 0.3
 # 训练相关
 l2_alpha = 1e-7
 device = "cuda"

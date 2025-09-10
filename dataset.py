@@ -20,9 +20,9 @@ class MyDataset(Dataset):
         self.data_path = data_path
         self.seq_offsets = self.load_offset()
         self.seq_file_fp = None
-        if enable_aug:
-            self.item_feat_dict = self.read_item_feat_dict()
-            self.annoyid2top20sim_dict = self.read_item_annoyid2top20sim_dict()
+        # if enable_aug:
+        #     self.item_feat_dict = self.read_item_feat_dict()
+        #     self.annoyid2top20sim_dict = self.read_item_annoyid2top20sim_dict()
         
     def get_similar_item(self, item_id, item_feat):
         if item_id not in self.annoyid2top20sim_dict:
@@ -284,6 +284,14 @@ class MyDataset(Dataset):
                 ext_seq[i] = (similar_item_id, similar_item_feat, action_type, ts)
         return ext_seq
     
+    def seq_replace_with_empty_feat(self, ext_seq, p):
+        if random.random() > p:
+            return ext_seq
+        for i in range(len(ext_seq)):
+            item_id, feat, action_type, ts = ext_seq[i]
+            if action_type != 1 and random.random() < 0.1:
+                ext_seq[i] = (item_id, {}, action_type, ts)
+        return ext_seq
     def aug_seq(self, ext_seq):
         if len(ext_seq) < 30:
             return ext_seq
@@ -292,12 +300,14 @@ class MyDataset(Dataset):
        
         # reorder其中部分序列
         ext_seq = self.seq_reorder(ext_seq, const.reorder_prob)
-       
+        
         # 随机替换 mask掉一些item的feature
         ext_seq = self.seq_mask(ext_seq, const.mask_prob)
         
+        # 随机替换一些feature 为空
+        ext_seq = self.seq_replace_with_empty_feat(ext_seq, const.empty_feat_prob)
         # 随机替换为相似item
-        ext_seq = self.replace_with_similar_item(ext_seq, const.similar_prob)
+        # ext_seq = self.replace_with_similar_item(ext_seq, const.similar_prob)
         return ext_seq     
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
