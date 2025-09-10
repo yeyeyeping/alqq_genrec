@@ -29,8 +29,8 @@ class NegDataset(Dataset):
                                                                                include_item=True, 
                                                                                include_context=False, 
                                                                                include_user=False)
-MEAN_EXP = 18.9
-MEAN_CLICK = 5.5
+MEAN_CLIK_RATE = 0.09727
+TAU = 10
 
 class HotNegDataset(Dataset):
     def __init__(self, data_path):
@@ -52,7 +52,7 @@ class HotNegDataset(Dataset):
             # 计算流行度, 并采用贝叶斯平滑
             exp = item_expression_num[str(k)]
             click = item_click_num[str(k)]
-            p = (click + MEAN_CLICK * 1.0) / (exp + MEAN_EXP * 1.0) 
+            p = (click + MEAN_CLIK_RATE * TAU) / (exp + TAU) 
             popularity.append(p ** const.popularity_coef)
         return popularity
                         

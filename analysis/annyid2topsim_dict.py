@@ -49,8 +49,8 @@ def build_faiss_index(embs: np.ndarray, nlist: int, pq_m: int, use_gpu: bool):
     index = faiss.IndexIVFPQ(quantizer, dim, nlist, pq_m, 8)
     index.metric_type = faiss.METRIC_INNER_PRODUCT
 
-    # 训练样本规模：nlist*40 或者 20万，取最大且不超过全集
-    train_samples = min(embs.shape[0], max(200_000, nlist * 40))
+    # 训练样本规模：nlist*200 或者 100万，取最大且不超过全集
+    train_samples = min(embs.shape[0], max(1_000_000, nlist * 200))
     rng = np.random.default_rng(123)
     train_idx = rng.choice(embs.shape[0], size=train_samples, replace=False)
     index.train(embs[train_idx])
@@ -59,6 +59,8 @@ def build_faiss_index(embs: np.ndarray, nlist: int, pq_m: int, use_gpu: bool):
         res = faiss.StandardGpuResources()
         co = faiss.GpuClonerOptions()
         co.useFloat16 = True
+        # 使用 64 位索引以避免当原始 ID 超过 2^31-1 时的溢出
+        co.indicesOptions = faiss.INDICES_64_BIT
         # 单卡优先，避免多卡复制导致显存翻倍
         index = faiss.index_cpu_to_gpu(res, 0, index, co)
 
@@ -69,7 +71,7 @@ def torch_normalize(x: torch.Tensor, dim: int = 1, eps: float = 1e-12) -> torch.
     return x / (x.norm(p=2, dim=dim, keepdim=True).clamp_min(eps))
 
 
-def kmeans_train_torch(sample: torch.Tensor, nlist: int, iters: int = 15, seed: int = 123) -> torch.Tensor:
+def kmeans_train_torch(sample: torch.Tensor, nlist: int, iters: int = 20, seed: int = 123) -> torch.Tensor:
     torch.manual_seed(seed)
     device = sample.device
     S, D = sample.shape
@@ -121,8 +123,8 @@ def topn_neighbor_clusters(centroids: torch.Tensor, nprobe: int) -> torch.Tensor
 
 
 def torch_ivf_search(ids: np.ndarray, embs_np: np.ndarray, nlist: int, nprobe: int, k: int = 21,
-                     kmeans_sample: int = 200_000, kmeans_iters: int = 15,
-                     q_batch: int = 50_000, device: str = 'cuda'):
+                     kmeans_sample: int = 1_000_000, kmeans_iters: int = 20,
+                     q_batch: int = 150_000, device: str = 'cuda'):
     x_all = torch.from_numpy(embs_np).to(device)
     x_all = torch_normalize(x_all, dim=1)
 
@@ -191,14 +193,22 @@ def main():
     if backend == 'torch_ivf':
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         nlist = int(min(16384, max(4096, 2 * int(np.sqrt(max(1, n))))))
-        nprobe = 32
+        nprobe = 48
         neighbors_out = torch_ivf_search(ids, embs, nlist=nlist, nprobe=nprobe, k=k, device=device)
         all_ids = ids
     else:
         if not HAS_FAISS:
             raise ImportError("faiss is required for fast ANN search. Set ANN_BACKEND=torch_ivf to use PyTorch IVF.")
-        nlist = int(min(65536, max(4096, 2 * int(np.sqrt(max(1, n))))))
-        pq_m = 16 if dim >= 16 else max(4, dim)
+        nlist = int(min(65536, max(4096, 4 * int(np.sqrt(max(1, n))))))
+        # 为更高召回选择尽可能大的可整除 pq_m（不超过32，且 >=4）
+        target_m = min(32, dim)
+        pq_m = None
+        for m in range(target_m, 3, -1):
+            if dim % m == 0:
+                pq_m = m
+                break
+        if pq_m is None:
+            pq_m = 4 if dim >= 4 else dim
         use_gpu = True
 
         index = build_faiss_index(embs, nlist=nlist, pq_m=pq_m, use_gpu=use_gpu)
@@ -206,7 +216,7 @@ def main():
         if hasattr(index, 'nprobe'):
             index.nprobe = min(128, nlist)
 
-        batch = 200_000
+        batch = 1_000_000
         neighbors_chunks = []
         id_batches = []
         for start in range(0, n, batch):
@@ -234,9 +244,12 @@ def main():
 
         neighbors_out = np.vstack(neighbors_chunks)
         all_ids = np.concatenate(id_batches)
-
     # 保存为 dict
     result = {int(all_ids[i]): [int(x) for x in neighbors_out[i] if x != -1] for i in range(all_ids.shape[0])}
+    index_file = data_path / "indexer.pkl"
+    indexer = read_pickle(index_file)
+    result = {indexer['i'][k]:[ indexer['i'][x] for x in v]for k, v in result.items()}
+    
     out_path = cache_path / "annoyid2top20sim_dict.pkl"
     with open(out_path, "wb") as f:
         pickle.dump(result, f, protocol=pickle.HIGHEST_PROTOCOL)
