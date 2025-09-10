@@ -27,9 +27,12 @@ class MyDataset(Dataset):
     def get_similar_item(self, item_id, item_feat):
         if item_id not in self.annoyid2top20sim_dict:
             return item_id, item_feat
-        sim_list = self.annoyid2top20sim_dict[item_id]
-        selected_item_id = random.sample(sim_list, 1)[0]
         
+        sim_list = self.annoyid2top20sim_dict[item_id]
+        if len(sim_list) == 0:
+            return item_id, item_feat
+        
+        selected_item_id = random.sample(sim_list, 1)[0]
         if item_id not in self.item_feat_dict:
             return item_id, item_feat
         
