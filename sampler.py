@@ -38,6 +38,11 @@ class HotNegDataset(Dataset):
         self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
         self.item_ids = list(range(1, len(self.item_feat_dict) + 1))
         self.popularity = torch.as_tensor(self.calc_poplurity(), dtype=torch.float32)
+        # 预生成热门采样缓冲区，避免每次都在 500w 权重上采样
+        self._pop_buffer_size = max(2_000_000, 256 * 1024)
+        self._pop_buffer = None
+        self._pop_ptr = 0
+        self._refill_pop_buffer()
         
 
     def calc_poplurity(self, ):
@@ -66,8 +71,9 @@ class HotNegDataset(Dataset):
         neg_item_feat_list = []
         num_sampled_popularity = int(256 * const.popularity_samples_ratio)
         num_sampled_random = 256 - num_sampled_popularity
-        sampled_id = torch.multinomial(self.popularity, num_sampled_popularity) + 1
-        sampled_id = sampled_id.tolist()  + random.sample(self.item_ids, num_sampled_random)
+        # 从缓冲区取样，近似无放回（去重不足部分再补齐）
+        sampled_id = self._draw_pop_ids(num_sampled_popularity)
+        sampled_id = sampled_id.tolist() + random.sample(self.item_ids, num_sampled_random)
         
         for i in sampled_id:            
             neg_item_reid_list.append(i)
@@ -76,6 +82,33 @@ class HotNegDataset(Dataset):
         return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
                                                                                include_user=False, 
                                                                                include_context=False)
+
+    def _refill_pop_buffer(self):
+        # 使用一次性大规模有放回采样来填充缓冲区（C++实现，速度快），索引从1开始
+        self._pop_buffer = torch.multinomial(self.popularity, self._pop_buffer_size, replacement=True) + 1
+        self._pop_ptr = 0
+
+    def _draw_pop_ids(self, k: int) -> torch.Tensor:
+        if k <= 0:
+            return torch.empty(0, dtype=torch.long)
+        # 若缓冲区不够则补充
+        if self._pop_ptr + k > self._pop_buffer.numel():
+            self._refill_pop_buffer()
+        out = self._pop_buffer[self._pop_ptr:self._pop_ptr + k]
+        self._pop_ptr += k
+        # 尽量无放回：去重，不足部分从缓冲区补齐一次
+        if out.numel() > 1:
+            uniq = torch.unique(out, sorted=False)
+            if uniq.numel() < k:
+                need = k - uniq.numel()
+                if self._pop_ptr + need > self._pop_buffer.numel():
+                    self._refill_pop_buffer()
+                supplement = self._pop_buffer[self._pop_ptr:self._pop_ptr + need]
+                self._pop_ptr += need
+                out = torch.cat([uniq, supplement], dim=0)
+            else:
+                out = uniq[:k]
+        return out
 
 def collate_fn(batch):
     neg_item_reid_list, neg_item_feat_list = zip(*batch)
