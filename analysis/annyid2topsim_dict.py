@@ -251,12 +251,14 @@ def main():
     indexer = read_pickle(index_file)
     result_dict = defaultdict(list)
     for k, v in result.items():
-        for x in v:
-            if x in indexer['i']:
-                result_dict[indexer['i'][k]].append(indexer['i'][x])
-            else:
-                oov.append(k)
-    
+        if k in indexer['i']:
+            for x in v:
+                if x in indexer['i']:
+                    result_dict[indexer['i'][k]].append(indexer['i'][x])
+                else:
+                    oov.append(k)
+        else:
+            oov.append(k)
     
     out_path = cache_path / "annoyid2top20sim_dict.pkl"
     with open(out_path, "wb") as f:
@@ -264,8 +266,15 @@ def main():
     print(f"save to {out_path}")
     for o in oov:
         print(o)
+
+    for i, (k, v) in enumerate(result_dict.items()):
+        print(k, v)
+        if i > 100:
+            break
+
     print(f"oov: {len(oov)}")
     
+
 
 if __name__ == "__main__":
     main()
