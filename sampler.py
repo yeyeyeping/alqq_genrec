@@ -19,12 +19,14 @@ class NegDataset(Dataset):
         self._uni_buffer_size = max(2_000_000, 256 * 1024)
         self._uni_buffer = None
         self._uni_ptr = 0
-        self._refill_uniform_buffer()
         
     def __len__(self):
         return 0x7FFFFFFF
     
     def __getitem__(self, index):
+        if self._uni_buffer is None:
+            self._refill_uniform_buffer()
+            
         neg_item_reid_list = []
         neg_item_feat_list = []
         # 从缓冲区取样，近似无放回（去重不足部分再补齐）

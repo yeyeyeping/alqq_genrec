@@ -225,10 +225,10 @@ class MyDataset(Dataset):
         return action_type_list, item_id_list, item_feat_dict, context_feat
     
     def random_crop_seq(self, ext_seq, p):
-        if random.random() > p:
+        if random.random() < p:
             return ext_seq
         seq_len = len(ext_seq)
-        num_crop = random.randint(seq_len // 20, seq_len // 5)
+        num_crop = random.randint(seq_len // 20, seq_len // 10)
         # 随机删除5-20%序列
         p = random.random()
         # 删除前面的5-20%
@@ -247,10 +247,10 @@ class MyDataset(Dataset):
         return ext_seq
 
     def seq_reorder(self, ext_seq, p):
-        if random.random() > p:
+        if random.random() < p:
             return ext_seq
         # 只在某个窗口内reorder
-        windows_size = random.randint(5, 15)
+        windows_size = random.randint(2, 6)
         start_idx = random.randint(0, len(ext_seq) - windows_size)
         
         end_idx = start_idx + windows_size
@@ -262,11 +262,13 @@ class MyDataset(Dataset):
         return ext_seq
     
     def seq_mask(self, ext_seq, p):
-        if random.random() > p:
+        if random.random() < p:
             return ext_seq
         
-        selected_seq = random.sample(ext_seq, int(len(ext_seq) * 0.1))
-        for _, feat, _, _ in selected_seq:
+        selected_seq = random.sample(ext_seq, random.randint(1, 5))
+        for _, feat, action_type, _ in selected_seq:
+            if action_type == 1:
+                continue
             seleted_feat_key = random.sample(list(feat.keys()), 1)
             
             for seleted_feat_key in seleted_feat_key:
@@ -275,22 +277,23 @@ class MyDataset(Dataset):
         return ext_seq
     
     def replace_with_similar_item(self, ext_seq, p):
-        if random.random() > p:
+        if random.random() < p:
             return ext_seq
         for i in range(len(ext_seq)):
             item_id, feat, action_type, ts = ext_seq[i]
-            if ext_seq[i][2] != 1 and random.random() < 0.1:
+            if action_type != 1 and random.random() < 0.1:
                 similar_item_id, similar_item_feat = self.get_similar_item(item_id, feat)
                 ext_seq[i] = (similar_item_id, similar_item_feat, action_type, ts)
         return ext_seq
     
     def seq_replace_with_empty_feat(self, ext_seq, p):
-        if random.random() > p:
+        if random.random() < p:
             return ext_seq
-        for i in range(len(ext_seq)):
-            item_id, feat, action_type, ts = ext_seq[i]
-            if action_type != 1 and random.random() < 0.1:
-                ext_seq[i] = (item_id, {}, action_type, ts)
+        selected_seq = random.sample(list(range(len(ext_seq))), random.randint(1, 5))
+        for i in selected_seq:
+            if ext_seq[i][2] == 1:
+                continue
+            ext_seq[i] = (ext_seq[i][0], {}, ext_seq[i][2], ext_seq[i][3])
         return ext_seq
     def aug_seq(self, ext_seq):
         if len(ext_seq) < 30:

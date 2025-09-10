@@ -11,11 +11,11 @@ class UserTower(nn.Module):
         self.sparse_emb = self.setup_embedding_layer()
 
         self.dnn = nn.Sequential(
-            nn.Linear(self.get_user_feature_dim(), const.model_param.user_dnn_units),
-            nn.GELU(),
+            nn.Linear(self.get_user_feature_dim(), const.model_param.hidden_units),
+            # nn.GELU(),
             # nn.LayerNorm(const.model_param.user_dnn_units),
             # nn.Dropout(const.model_param.dropout),
-            nn.Linear(const.model_param.user_dnn_units, const.model_param.hidden_units),
+            # nn.Linear(const.model_param.user_dnn_units, const.model_param.hidden_units),
         )
         
     def get_user_feature_dim(self):
@@ -70,11 +70,9 @@ class ItemTower(nn.Module):
         super().__init__()
         self.sparse_emb = self.setup_embedding_layer()
         self.dnn = nn.Sequential(
-            nn.Linear(self.get_item_feature_dim(), const.model_param.item_dnn_units),
-            nn.GELU(),
-            # nn.LayerNorm(const.model_param.item_dnn_units),
-            # nn.Dropout(const.model_param.dropout),
-            nn.Linear(const.model_param.item_dnn_units, const.model_param.hidden_units),
+            nn.Linear(self.get_item_feature_dim(), const.model_param.hidden_units),
+            # nn.GELU(),
+            # nn.Linear(const.model_param.item_dnn_units, const.model_param.hidden_units),
         )
         self.mm_liner = self.build_mm_liner()
         
@@ -134,9 +132,10 @@ class ContextTower(nn.Module):
         super().__init__()
         self.sparse_emb = self.setup_embedding_layer()
         self.dnn = nn.Sequential(
-            nn.Linear(self.get_context_feature_dim(), const.model_param.context_dnn_units),
-            nn.GELU(),
-            nn.Linear(const.model_param.context_dnn_units, const.model_param.hidden_units),
+            nn.Linear(self.get_context_feature_dim(), const.model_param.hidden_units),
+            # nn.Linear(self.get_context_feature_dim(), const.model_param.context_dnn_units),
+            # nn.SiLU(),
+            # nn.Linear(const.model_param.context_dnn_units, const.model_param.hidden_units),
         )
         self.item_embedding = item_embedding
         

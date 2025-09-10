@@ -110,7 +110,6 @@ def infer():
     t = time.time()
     print(f"start to predict {len(dataloader) * dataloader.batch_size} user seqs")
     for str_user_id, user_id, user_feat, action_type, item_id, item_feat, context_feat in dataloader:
-        breakpoint()
         item_feat = emb_loader.add_mm_emb(item_id, item_feat)
         user_id,item_id = user_id.to(const.device), item_id.to(const.device)
         user_feat, item_feat,context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
