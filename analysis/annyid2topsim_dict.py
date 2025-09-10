@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pickle
 import torch
-
+from collections import defaultdict
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 
@@ -179,6 +179,7 @@ def torch_ivf_search(ids: np.ndarray, embs_np: np.ndarray, nlist: int, nprobe: i
 
 
 def main():
+    oov = []
     data_path = Path(os.environ.get('TRAIN_DATA_PATH'))
     cache_path = Path(os.environ.get('USER_CACHE_PATH'))
     emb_path = data_path / "creative_emb" / "emb_81_32.pkl"
@@ -248,13 +249,23 @@ def main():
     result = {int(all_ids[i]): [int(x) for x in neighbors_out[i] if x != -1] for i in range(all_ids.shape[0])}
     index_file = data_path / "indexer.pkl"
     indexer = read_pickle(index_file)
-    result = {indexer['i'][k]:[ indexer['i'][x] for x in v]for k, v in result.items()}
+    result_dict = defaultdict(list)
+    for k, v in result.items():
+        for x in v:
+            if x in indexer['i']:
+                result_dict[indexer['i'][k]].append(indexer['i'][x])
+            else:
+                oov.append(k)
+    
     
     out_path = cache_path / "annoyid2top20sim_dict.pkl"
     with open(out_path, "wb") as f:
-        pickle.dump(result, f, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(result_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
     print(f"save to {out_path}")
-
+    for o in oov:
+        print(o)
+    print(f"oov: {len(oov)}")
+    
 
 if __name__ == "__main__":
     main()
