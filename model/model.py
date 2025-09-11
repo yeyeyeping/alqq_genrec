@@ -20,7 +20,11 @@ class MoEClassifier(nn.Module):
     def forward(self, x):
         gate_weights = F.softmax(self.gate(x)  , dim=-1)
         expert_logits = torch.stack([expert(x) for expert in self.experts], dim=1)  
-        gate_weights = gate_weights.permute(0, 2, 1).unsqueeze(-1)  
+        
+        if gate_weights.ndim == 2:
+            gate_weights = gate_weights.unsqueeze(-1)
+        else:
+            gate_weights = gate_weights.permute(0, 2, 1).unsqueeze(-1)  
         fused_logits = (gate_weights * expert_logits).sum(dim=1)  
         return fused_logits
 
@@ -184,12 +188,9 @@ class BaselineModel(nn.Module):
         self.item_tower = ItemTower()
         self.user_tower = UserTower()
         self.context_tower = ContextTower(self.item_tower.sparse_emb)
-        self.merge_dnn = nn.Sequential(
-            nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units),
-            # nn.LayerNorm(const.model_param.hidden_units),
-            # nn.Dropout(const.model_param.dropout),
-        )
-        self.context_dnn = nn.Linear(const.model_param.hidden_units * 3, const.model_param.hidden_units)
+        self.merge_dnn = MoEClassifier(const.model_param.num_experts, const.model_param.hidden_units, const.model_param.hidden_units)
+        self.context_dnn = MoEClassifier(const.model_param.num_experts, const.model_param.hidden_units * 3, const.model_param.hidden_units)
+
         
         self.pos_embedding = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
         self.emb_dropout = nn.Dropout(const.model_param.dropout)

@@ -65,7 +65,7 @@ class ModelParam:
         self.relative_attention_num_buckets = 32
         self.relative_attention_bucket_dim = 16
         self.relative_attention_max_distance = 128
-    
+        self.num_experts = 10
     def read_feature_size(self, indexer_file):
         indexer = read_pickle(indexer_file)
         emb_table_size = {}
