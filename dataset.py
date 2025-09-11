@@ -204,7 +204,6 @@ class MyDataset(Dataset):
             "401": torch.as_tensor(front_click_101_list, dtype=torch.int32),
             "403": torch.as_tensor(ctx_nxt, dtype=torch.int32)
         }
-        breakpoint()
         return action_type_list, item_id_list, item_feat_dict, context_feat
     
     def __getitem__(self, index):
