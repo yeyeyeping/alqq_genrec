@@ -59,7 +59,7 @@ class ModelParam:
         self.context_dnn_units = 128
         self.dropout = 0.2
         self.hidden_units = 256
-        self.num_blocks = 24
+        self.num_blocks = 8
         self.num_heads = 8
         self.norm_first = True
         self.relative_attention_num_buckets = 32
