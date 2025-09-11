@@ -226,14 +226,6 @@ if __name__ == '__main__':
     neg_loader = iter(sample_neg())
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
-    hard_neg_bank_id = torch.zeros(10000, dtype=torch.int32, device=const.device)
-    
-    hard_neg_bank_feat = {
-        k:torch.zeros(10000, dtype=torch.int32, device=const.device)
-        for k in const.item_feature.all_feature_ids
-    }
-    hard_neg_bank_feat['81'] = torch.zeros(10000, const.mm_emb_dim['81'], dtype=torch.float32, device=const.device)
-    
     for epoch in range(1, const.num_epochs + 1):
         model.train()
 
