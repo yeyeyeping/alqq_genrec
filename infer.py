@@ -68,9 +68,8 @@ def next_batched_item(indexer, batch_size=512):
 def infer():
     torch.set_grad_enabled(False)
     
-    data_path = os.environ.get('EVAL_DATA_PATH')
     # 加载数据
-    test_dataset = MyTestDataset(data_path=data_path)
+    test_dataset = MyTestDataset(const.data_path)
     dataloader = DataLoader(test_dataset,
                             batch_size=4096,  # 使用正确的512 
                             num_workers=16, 
@@ -78,7 +77,7 @@ def infer():
                             persistent_workers=True,  # 保持worker存活
                             prefetch_factor=4)  # 预取4个batch
     
-    emb_loader = Memorymm81Embloader(data_path)
+    emb_loader = Memorymm81Embloader(const.data_path)
     # 加载模型
     model = BaselineModel().to(const.device)
     ckpt_path = get_ckpt_path()

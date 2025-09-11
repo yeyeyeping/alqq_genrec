@@ -11,7 +11,9 @@ if data_path is None:
     data_path = os.environ.get('EVAL_DATA_PATH')
     if data_path is None:
         raise ValueError("Test data path is not set, please set the EVAL_DATA_PATH environment variable")
-    
+data_path = Path(data_path)
+user_cache_path = Path(os.environ.get('USER_CACHE_PATH'))
+
 # 数据相关
 mm_emb_dim = {
     "81": 32,

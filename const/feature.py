@@ -49,6 +49,7 @@ class  ItemFeature:
             '120',
             '121',
             '122',
+            '123',
         )
         self.dense_feature_ids = ()
         self.mm_emb_feature_ids = ("81", )
@@ -72,10 +73,11 @@ class ContextFeature:
             "204",
             "205",
             "206",
+            "402",
+            # "403"
         )
         self.seq_len = 10
-        self.array_feature_ids = ("210")
-        
+        self.array_feature_ids = ("210", )
         self.all_feature_ids = sorted(list(self.sparse_feature_ids) + list(self.array_feature_ids))
     
     def fill(self, feat_id):
@@ -91,5 +93,5 @@ item_feature = ItemFeature()
 context_feature = ContextFeature()
 print(f"total user feature: {len(user_feature.all_feature_ids)}, ids: {user_feature.all_feature_ids}")
 print(f"total item feature: {len(item_feature.all_feature_ids)}, ids: {item_feature.all_feature_ids}")
-
+print(f"total context feature: {len(context_feature.all_feature_ids)}, ids: {context_feature.all_feature_ids}")
 print(f"total feature: {len(user_feature.all_feature_ids) + len(item_feature.all_feature_ids)}, ids: {user_feature.all_feature_ids + item_feature.all_feature_ids}")
