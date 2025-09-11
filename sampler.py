@@ -8,6 +8,9 @@ from torch.utils.data import Dataset,DataLoader
 import const
 import os
 import pickle
+
+MEAN_TIME = 48.32138517426633
+MAX_TIME = 231.31589120370373
 from collections import defaultdict
 class NegDataset(Dataset):
     def __init__(self, data_path):
