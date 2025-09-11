@@ -74,9 +74,9 @@ def next_batched_item(indexer, batch_size=512):
     
 def infer():
     torch.set_grad_enabled(False)
-    
+    data_path = Path(os.environ['EVAL_DATA_PATH'])
     # 加载数据
-    test_dataset = MyTestDataset(const.data_path)
+    test_dataset = MyTestDataset(data_path)
     dataloader = DataLoader(test_dataset,
                             batch_size=4096,  # 使用正确的512 
                             num_workers=16, 
