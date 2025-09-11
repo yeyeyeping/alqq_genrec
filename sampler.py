@@ -1,4 +1,4 @@
-from utils import read_json
+from utils import read_json, read_pickle
 from dataset import MyDataset
 import torch
 from pathlib import Path
@@ -77,8 +77,10 @@ class HotNegDataset(Dataset):
         self._pop_buffer_size = max(5_000_000, 256 * 1024)
         self._pop_buffer = None
         self._pop_ptr = 0
-        
-
+        self.item_id2_time_dict = self.read_item_time_dict()
+    
+    def read_item_time_dict(self):
+        return read_pickle(const.user_cache_path / 'item_id2_time_dict.pkl')
     def calc_poplurity(self, ):
         item_expression_num,item_click_num = self._load_data_info()
         popularity = []
@@ -113,7 +115,14 @@ class HotNegDataset(Dataset):
         
         for i in sampled_id:            
             neg_item_reid_list.append(i)
-            neg_item_feat_list.append(self.item_feat_dict[str(i)])
+
+            
+            feat = self.item_feat_dict[str(i)]            
+            feat['123'] = self.item_id2_time_dict[i] if i in self.item_id2_time_dict else MEAN_TIME
+            feat['123'] = int(feat['123']) + 1
+            
+                        
+            neg_item_feat_list.append(feat)
             
         return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
                                                                                include_user=False, 

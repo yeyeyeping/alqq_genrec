@@ -7,6 +7,7 @@ from dataset import MyTestDataset,MyDataset
 from torch.utils.data import DataLoader
 import torch
 import const
+from utils import read_pickle
 from  mm_emb_loader import Memorymm81Embloader
 from torch.nn import functional as F
 import time
@@ -24,6 +25,7 @@ def to_device(batch):
     return batch
 
 def next_batched_item(indexer, batch_size=512):
+    item_id2_time_dict = read_pickle(const.user_cache_path / 'item_id2_time_dict.pkl')S
     candidate_path = Path(os.environ.get('EVAL_DATA_PATH'), 'predict_set.jsonl')
     with open(candidate_path, 'r') as f:
         item_id_list = []
@@ -34,7 +36,10 @@ def next_batched_item(indexer, batch_size=512):
             
             feature, creative_id = item['features'],item['creative_id']
             item_id = indexer[creative_id] if creative_id in indexer else 0
+            
             feature = MyTestDataset._process_cold_start_feat(feature)
+            feature['123'] = item_id2_time_dict[item_id] if item_id in item_id2_time_dict else MEAN_TIME
+            feature['123'] = int(feature['123']) + 1
             
             item_id_list.append(item_id)
             feature_list.append(feature)
