@@ -36,7 +36,7 @@ def build_dataloader(dataset, batch_size, num_workers, shuffle):
 def apply_model_init(model:BaselineModel):
     def init_param(param):
         if isinstance(param, nn.Linear):
-            nn.init.kaiming_normal_(param.weight, mode='fan_in', nonlinearity='selu')
+            nn.init.kaiming_normal_(param.weight, mode='fan_in', nonlinearity='linear')
         
         elif isinstance(param, nn.Embedding):
             nn.init.normal_(param.weight, mean=0.0, std=0.02)
