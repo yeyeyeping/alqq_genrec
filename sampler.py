@@ -19,12 +19,13 @@ class NegDataset(Dataset):
         self._uni_buffer_size = max(2_000_000, 256 * 1024)
         self._uni_buffer = None
         self._uni_ptr = 0
-        self._refill_uniform_buffer()
         
     def __len__(self):
         return 0x7FFFFFFF
     
     def __getitem__(self, index):
+        if self._uni_buffer is None:
+            self._refill_uniform_buffer()
         neg_item_reid_list = []
         neg_item_feat_list = []
         # 从缓冲区取样，近似无放回（去重不足部分再补齐）
@@ -76,7 +77,6 @@ class HotNegDataset(Dataset):
         self._pop_buffer_size = max(2_000_000, 256 * 1024)
         self._pop_buffer = None
         self._pop_ptr = 0
-        self._refill_pop_buffer()
         
 
     def calc_poplurity(self, ):
@@ -101,6 +101,8 @@ class HotNegDataset(Dataset):
         return data_info['item_expression_num'], data_info['item_click_num']
             
     def __getitem__(self, index):
+        if self._pop_buffer is None:
+            self._refill_pop_buffer()
         neg_item_reid_list = []
         neg_item_feat_list = []
         num_sampled_popularity = int(256 * const.popularity_samples_ratio)

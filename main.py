@@ -1,5 +1,6 @@
 import copy
 from sampler import sample_neg
+from torch import nn
 import json
 import os
 import time
@@ -33,18 +34,30 @@ def build_dataloader(dataset, batch_size, num_workers, shuffle):
     )
 
 def apply_model_init(model:BaselineModel):
-    for name, param in model.named_parameters():
-        try:
-            torch.nn.init.xavier_normal_(param.data)
-        except Exception:
-            pass
-    for k in model.user_tower.sparse_emb:
-        model.user_tower.sparse_emb[k].weight.data[0, :] = 0
+    def init_param(param):
+        if isinstance(param, nn.Linear):
+            nn.init.kaiming_normal_(param.weight, mode='fan_in', nonlinearity='linear')
+        
+        elif isinstance(param, nn.Embedding):
+            nn.init.normal_(param.weight, mean=0.0, std=0.02)
+            if hasattr(param, 'padding_idx') and param.padding_idx is not None:
+                param.weight.data[param.padding_idx].zero_()
+        
+        elif isinstance(param, (nn.LayerNorm, nn.RMSNorm)):
+            if hasattr(param, 'scale'):
+                nn.init.ones_(param.scale)
+            elif hasattr(param, 'weight'):
+                nn.init.ones_(param.weight)
+        else:    
+            try:
+                nn.init.xavier_normal_(param.data)
+            except Exception:
+                print(f"skip {param}")
     
-    for k in model.item_tower.sparse_emb:
-        model.item_tower.sparse_emb[k].weight.data[0, :] = 0
+    model.apply(init_param)
     
-    model.pos_embedding.weight.data[0, :] = 0
+    nn.init.constant_(model.item_tower.sparse_emb['item_id'].weight, 0)
+    nn.init.constant_(model.user_tower.sparse_emb['user_id'].weight, 0)
 
 
 def to_device(batch):
@@ -82,7 +95,7 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     neg_feat['81'] = neg_feat['81'].to(const.device)
     
     user_id = user_id.to(const.device, non_blocking=True)
-    user_feat, item_feat, context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
+    user_feat,action_type, item_feat, context_feat = to_device(user_feat),action_type.to(const.device, non_blocking=True), to_device(item_feat), to_device(context_feat)
     
     # if (hard_neg_bank_id == 0).sum() == 0:
     #     neg_id = torch.cat([hard_neg_bank_id, neg_id])
@@ -102,18 +115,13 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         anchor_emb = F.normalize(next_token_emb[indices[0], indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
         neg_emb = F.normalize(neg_emb, dim=-1)
-        loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, return_logits=True)
+        
+        weight = torch.where(next_action_type[indices[0],indices[1]] == 1, 4.0, 1.0)
+        loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, weight, return_logits=True)
         
         loss += l2_reg_loss(model,const.l2_alpha)
         
         with torch.no_grad():
-            # prob = logits.softmax(dim=-1)
-            # neg_mean_prob = prob[:,1:].mean(dim=0)
-            
-            # topk_indices = torch.topk(neg_mean_prob, k=1000, largest=True)[1]
-            # hard_neg_bank_id = torch.cat([hard_neg_bank_id, neg_id[topk_indices]])[-10000:]
-            # hard_neg_bank_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k][topk_indices]])[-10000:]
-            #                       for k in hard_neg_bank_feat.keys()}
             
             top1_correct, top10_correct, entropy = compute_metrics(logits)
     return loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,neg_id.shape[0]
@@ -210,14 +218,7 @@ if __name__ == '__main__':
     neg_loader = iter(sample_neg())
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
-    hard_neg_bank_id = torch.zeros(10000, dtype=torch.int32, device=const.device)
-    
-    hard_neg_bank_feat = {
-        k:torch.zeros(10000, dtype=torch.int32, device=const.device)
-        for k in const.item_feature.all_feature_ids
-    }
-    hard_neg_bank_feat['81'] = torch.zeros(10000, const.mm_emb_dim['81'], dtype=torch.float32, device=const.device)
-    
+
     for epoch in range(1, const.num_epochs + 1):
         model.train()
 
