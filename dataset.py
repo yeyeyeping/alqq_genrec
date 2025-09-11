@@ -1,11 +1,13 @@
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
 from utils import read_pickle
-import json
+from utils import read_json
 import const
 from collections import defaultdict
 import torch
 from datetime import datetime
+import random
+import json
 import pandas as pd
 
 # from torch.utils.data._utils.collate import default_collate
@@ -19,7 +21,8 @@ class MyDataset(Dataset):
         self.data_path = Path(data_path)
         self.seq_offsets = self.load_offset()
         self.seq_file_fp = None
-    
+        self.id2top20sim_dict = read_pickle(const.user_cache / 'annoyid2top20sim_dict.pkl')
+        self.item_feat_dict = read_json(self.data_path / 'item_feat_dict.json')
     def load_offset(self):
         return read_pickle(self.data_path/'seq_offsets.pkl')
         
@@ -153,7 +156,84 @@ class MyDataset(Dataset):
             raise ValueError(f"Invalid sequence type: {type(seq)}")
         
         return pad_value + seq
+    def random_crop_seq(self, ext_seq):
+        seq_len = len(ext_seq)
+        num_crop = random.randint(seq_len // 20, seq_len // 10)
+        # 随机删除5-20%序列
+        p = random.random()
+        # 删除前面的5-20%
+        if p < 0.4:
+            # 删除前面的5-20%
+            ext_seq = ext_seq[num_crop:]
+        elif p < 0.8:
+            #随机删除
+            random_removed_idx = random.sample(range(len(ext_seq)), num_crop)
+            # 随机删除但保留点击序列
+            ext_seq = [ext_seq[i] for i in range(len(ext_seq)) if i not in random_removed_idx or ext_seq[i][2] == 1] 
+            
+        else:
+            # 删除后面的5-20%
+            ext_seq = ext_seq[:-num_crop]
+        return ext_seq
     
+    def seq_mask(self, ext_seq):
+        
+        selected_seq = random.sample(ext_seq, random.randint(1, 5))
+        for _, feat, action_type, _ in selected_seq:
+            if action_type == 1:
+                continue
+            seleted_feat_key = random.sample(list(feat.keys()), 1)
+            
+            for seleted_feat_key in seleted_feat_key:
+                if seleted_feat_key in feat:
+                    feat.pop(seleted_feat_key)
+        return ext_seq
+    
+    def get_similar_item(self, item_id, item_feat):
+        if item_id not in self.id2top20sim_dict:
+            return item_id, item_feat
+        
+        sim_list = self.id2top20sim_dict[item_id]
+        if len(sim_list) == 0:
+            return item_id, item_feat
+        
+        selected_item_id = random.sample(sim_list, 1)[0]
+        
+        if str(selected_item_id) not in self.item_feat_dict:
+            return item_id, item_feat
+        
+        return selected_item_id, self.item_feat_dict[str(selected_item_id)]
+    def replace_with_similar_item(self, ext_seq):
+        for i in range(len(ext_seq)):
+            item_id, feat, action_type, ts = ext_seq[i]
+            if action_type != 1 and random.random() < 0.1:
+                similar_item_id, similar_item_feat = self.get_similar_item(item_id, feat)
+                ext_seq[i] = (similar_item_id, similar_item_feat, action_type, ts)
+        return ext_seq
+    def seq_replace_with_empty_feat(self, ext_seq):
+        selected_seq = random.sample(list(range(len(ext_seq))), random.randint(1, 5))
+        for i in selected_seq:
+            if ext_seq[i][2] == 1:
+                continue
+            ext_seq[i] = (ext_seq[i][0], {}, ext_seq[i][2], ext_seq[i][3])
+        return ext_seq
+    def aug_seq(self, ext_seq):
+        if len(ext_seq) < 30:
+            return ext_seq
+        # 随机crop序列
+        p = random.random()
+        if p < 0.2:
+            ext_seq = self.random_crop_seq(ext_seq)
+        elif p < 0.4:
+            # 随机替换 mask掉一些item的feature
+            ext_seq = self.seq_mask(ext_seq)
+        elif p < 0.7:
+            # 随机替换一些feature 为空
+            ext_seq = self.seq_replace_with_empty_feat(ext_seq)
+        else:
+            # 随机替换为相似item
+            ext_seq = self.replace_with_similar_item(ext_seq)
+        return ext_seq     
     def seq2feat(self, ext_user_seq):
         item_id_list = []
         action_type_list = []
@@ -204,7 +284,7 @@ class MyDataset(Dataset):
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
         user_id, user_feat, ext_user_seq = self.format_user_seq(user_seq)
-        
+        ext_user_seq = self.aug_seq(ext_user_seq)
         user_feat = MyDataset.fill_feature(user_feat, 
                                            include_user=True, 
                                            include_item=False, 

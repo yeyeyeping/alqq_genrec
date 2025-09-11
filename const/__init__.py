@@ -11,7 +11,7 @@ if data_path is None:
     data_path = os.environ.get('EVAL_DATA_PATH')
     if data_path is None:
         raise ValueError("Test data path is not set, please set the EVAL_DATA_PATH environment variable")
-    
+user_cache = Path(os.environ.get('USER_CACHE_PATH'))
 # 数据相关
 mm_emb_dim = {
     "81": 32,
@@ -37,6 +37,12 @@ sampling_strategy = "random" # hot
 neg_sample_num = 30000
 temperature = 0.04
 grad_norm = 1.0
+
+similar_prob = 0.2
+mask_prob = 0.2
+crop_prob = 0.1
+empty_feat_prob = 0.2
+
 # 推理相关
 infer_batch_size = 512
 # 模型参数
