@@ -162,6 +162,8 @@ def sample_neg():
         dataset = NegDataset(const.data_path)
     elif const.sampling_strategy == 'hot':
         dataset = HotNegDataset(const.data_path)
+    elif const.sampling_strategy == 'hot_expression':
+        dataset = HotExpressionNegDataset(const.data_path)
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
     loader = DataLoader(dataset, 
@@ -172,6 +174,115 @@ def sample_neg():
     
     return loader
             
+class HotExpressionNegDataset(Dataset):
+    def __init__(self, data_path):
+        self.data_path = Path(data_path)
+        self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
+        self.item_num = list(range(1, len(self.item_feat_dict) + 1))
+        item_expression_num = self._load_data_info()
+        self.hot_expression, self.cold_expression = self.keep_hot_expression_item(item_expression_num)
+        # 保证 id 为整型，便于张量化与后续拼接
+        self.hot_expression = [int(i) for i in self.hot_expression]
+        self.cold_expression = [int(i) for i in self.cold_expression]
+        # 预生成缓冲区以优化 Python 循环开销
+        self._buf_size = max(2_000_000, 256 * 1024)
+        self._hot_ids_tensor = torch.as_tensor(self.hot_expression, dtype=torch.long) if len(self.hot_expression) > 0 else torch.empty(0, dtype=torch.long)
+        self._cold_ids_tensor = torch.as_tensor(self.cold_expression, dtype=torch.long) if len(self.cold_expression) > 0 else torch.empty(0, dtype=torch.long)
+        self._hot_buffer = None
+        self._cold_buffer = None
+        self._hot_ptr = 0
+        self._cold_ptr = 0
+        print(f"hot expression item: {len(self.hot_expression)}")
+        
+    def __len__(self):
+        return 0x7FFFFFFF
+    
+    def keep_hot_expression_item(self,item_expression_num):
+        hot_expression_item = []
+        cold_expression_item = []
+        for k,v in item_expression_num.items():
+            if v >= 10:
+                hot_expression_item.append(k)
+            else:
+                cold_expression_item.append(k)
+        return hot_expression_item, cold_expression_item
+    
+    def _load_data_info(self):
+        cache_path = Path(os.environ.get('USER_CACHE_PATH'))
+        
+        with open(cache_path/"data_info.pkl", "rb") as f:
+            data_info = pickle.load(f)
+        return data_info['item_expression_num']
+    
+    def _refill_hot_buffer(self):
+        if self._hot_ids_tensor.numel() == 0:
+            self._hot_buffer = torch.empty(0, dtype=torch.long)
+        else:
+            idx = torch.randint(0, self._hot_ids_tensor.numel(), (self._buf_size,), dtype=torch.long)
+            self._hot_buffer = self._hot_ids_tensor[idx]
+        self._hot_ptr = 0
+    
+    def _refill_cold_buffer(self):
+        if self._cold_ids_tensor.numel() == 0:
+            self._cold_buffer = torch.empty(0, dtype=torch.long)
+        else:
+            idx = torch.randint(0, self._cold_ids_tensor.numel(), (self._buf_size,), dtype=torch.long)
+            self._cold_buffer = self._cold_ids_tensor[idx]
+        self._cold_ptr = 0
+    
+    def _draw_hot_ids(self, k: int) -> torch.Tensor:
+        if k <= 0:
+            return torch.empty(0, dtype=torch.long)
+        if self._hot_buffer is None or self._hot_ptr + k > self._hot_buffer.numel():
+            self._refill_hot_buffer()
+        out = self._hot_buffer[self._hot_ptr:self._hot_ptr + k]
+        self._hot_ptr += k
+        if out.numel() > 1:
+            uniq = torch.unique(out, sorted=False)
+            if uniq.numel() < k:
+                need = k - uniq.numel()
+                if self._hot_ptr + need > (0 if self._hot_buffer is None else self._hot_buffer.numel()):
+                    self._refill_hot_buffer()
+                supplement = self._hot_buffer[self._hot_ptr:self._hot_ptr + need]
+                self._hot_ptr += need
+                out = torch.cat([uniq, supplement], dim=0)
+            else:
+                out = uniq[:k]
+        return out
+    
+    def _draw_cold_ids(self, k: int) -> torch.Tensor:
+        if k <= 0:
+            return torch.empty(0, dtype=torch.long)
+        if self._cold_buffer is None or self._cold_ptr + k > self._cold_buffer.numel():
+            self._refill_cold_buffer()
+        out = self._cold_buffer[self._cold_ptr:self._cold_ptr + k]
+        self._cold_ptr += k
+        if out.numel() > 1:
+            uniq = torch.unique(out, sorted=False)
+            if uniq.numel() < k:
+                need = k - uniq.numel()
+                if self._cold_ptr + need > (0 if self._cold_buffer is None else self._cold_buffer.numel()):
+                    self._refill_cold_buffer()
+                supplement = self._cold_buffer[self._cold_ptr:self._cold_ptr + need]
+                self._cold_ptr += need
+                out = torch.cat([uniq, supplement], dim=0)
+            else:
+                out = uniq[:k]
+        return out
+            
+    def __getitem__(self, index):
+        # 每次返回 256 个负样本，30% 来自曝光≥10 的热门集合
+        k = 256
+        num_hot = int(k * const.hot_exp_ratio)
+        num_cold = k - num_hot
+        hot_ids = self._draw_hot_ids(num_hot)
+        cold_ids = self._draw_cold_ids(num_cold)
+        sampled_ids = torch.cat([hot_ids, cold_ids], dim=0)
+        neg_item_reid_list = sampled_ids.tolist()
+        neg_item_feat_list = [self.item_feat_dict[str(i)] for i in neg_item_reid_list]
+        return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
+                                                                               include_user=False, 
+                                                                               include_context=False)
 # class BaseSampler:
 #     def __init__(self, data_path):
 #         self.data_path = Path(data_path)
