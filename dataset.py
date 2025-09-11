@@ -412,6 +412,7 @@ class MyTestDataset(MyDataset):
                                            include_user=True, 
                                            include_item=False, 
                                            include_context=False)
+        
         action_type_list1, item_id_list1, item_feat_dict1, context_feat1 = self.seq2feat(ext_user_sequence)
         seq2 = self.aug_seq(copy.deepcopy(ext_user_sequence))
         action_type_list2, item_id_list2, item_feat_dict2, context_feat2 = self.seq2feat(seq2)
