@@ -183,6 +183,10 @@ class MyDataset(Dataset):
             ts_list.append(ts)
             
         item_id_list = MyDataset.pad_seq(item_id_list, const.max_seq_len, 0)
+        
+        ctx_nxt = torch.as_tensor(action_type_list+[1, ], dtype=torch.int32) + 1
+        ctx_nxt = MyDataset.pad_seq(ctx_nxt.tolist(), const.max_seq_len, 0)
+        
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len, 0)
         seq_list = MyDataset.pad_seq(seq_list, const.max_seq_len, [0, ]*const.context_feature.seq_len)
         feat_list = MyDataset.pad_seq(feat_list, const.max_seq_len, {})
@@ -197,8 +201,10 @@ class MyDataset(Dataset):
         context_feat = {
             ** time_feat,
             "210": torch.as_tensor(seq_list, dtype=torch.int32),
-            "401": torch.as_tensor(front_click_101_list, dtype=torch.int32)
+            "401": torch.as_tensor(front_click_101_list, dtype=torch.int32),
+            "403": torch.as_tensor(ctx_nxt, dtype=torch.int32)
         }
+        breakpoint()
         return action_type_list, item_id_list, item_feat_dict, context_feat
     
     def __getitem__(self, index):
