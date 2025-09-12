@@ -10,6 +10,10 @@ import const
 from  mm_emb_loader import Memorymm81Embloader
 from torch.nn import functional as F
 import time
+from utils import read_pickle
+MEAN_TIME = 48.32138517426633
+MAX_TIME = 231.31589120370373
+
 def get_ckpt_path():
     ckpt_path = os.environ.get("MODEL_OUTPUT_PATH")
     if ckpt_path is None:
@@ -24,6 +28,7 @@ def to_device(batch):
     return batch
 
 def next_batched_item(indexer, batch_size=512):
+    time_dict = read_pickle(const.user_cache / 'item_id2_time_dict.pkl')
     candidate_path = Path(os.environ.get('EVAL_DATA_PATH'), 'predict_set.jsonl')
     with open(candidate_path, 'r') as f:
         item_id_list = []
@@ -35,7 +40,8 @@ def next_batched_item(indexer, batch_size=512):
             feature, creative_id = item['features'],item['creative_id']
             item_id = indexer[creative_id] if creative_id in indexer else 0
             feature = MyTestDataset._process_cold_start_feat(feature)
-            
+            feature['123'] = time_dict[item_id] if item_id in time_dict else MEAN_TIME
+            feature['123'] = int(feature['123']) + 1
             item_id_list.append(item_id)
             feature_list.append(feature)
             creative_id_list.append(creative_id)
