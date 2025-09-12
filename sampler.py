@@ -16,7 +16,7 @@ class NegDataset(Dataset):
         # 连续 item id: [1, N]
         self._num_items = len(self.item_feat_dict)
         # 使用张量缓冲区实现接近“无放回”的均匀采样，避免 Python random 开销
-        self._uni_buffer_size = max(5_000_000, 256 * 1024)
+        self._uni_buffer_size = max(2_000_000, 256 * 1024)
         self._uni_buffer = None
         self._uni_ptr = 0
         

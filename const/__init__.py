@@ -21,7 +21,7 @@ mm_emb_dim = {
     "85": 4096,
     "86": 3584,
 }
-max_seq_len = 101
+max_seq_len = 102
 # 训练相关
 l2_alpha = 1e-7
 device = "cuda"

@@ -25,7 +25,7 @@ class MyDataset(Dataset):
         self.id2top20sim_dict = read_pickle(const.user_cache / 'annoyid2top20sim_dict.pkl')
     def load_offset(self):
         return read_pickle(self.data_path/'seq_offsets.pkl')
-        
+    
     def __len__(self):
         return len(self.seq_offsets)
     
