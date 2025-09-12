@@ -56,6 +56,7 @@ class ModelParam:
             "206": 16, # decay
             "403": 8
         }
+        self.num_experts = 10
         self.user_dnn_units = 128
         self.item_dnn_units = 128
         self.context_dnn_units = 128

@@ -10,9 +10,9 @@ import os
 import pickle
 from collections import defaultdict
 class NegDataset(Dataset):
-    def __init__(self, data_path):
+    def __init__(self, data_path, item_feat_dict):
         self.data_path = Path(data_path)
-        self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
+        self.item_feat_dict = item_feat_dict
         self.item_num = list(range(1, len(self.item_feat_dict) + 1))
         
     def __len__(self):
@@ -31,9 +31,9 @@ class NegDataset(Dataset):
                                                                                include_user=False)
 
 class HotNegDataset(Dataset):
-    def __init__(self, data_path, hot_exp_ratio=0.4, hot_click_ratio=0.2):
+    def __init__(self, data_path, item_feat_dict, hot_exp_ratio=0.4, hot_click_ratio=0.2):
         self.data_path = Path(data_path)
-        self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
+        self.item_feat_dict = item_feat_dict
         self.item_num = list(range(1, len(self.item_feat_dict) + 1))
         item_expression_num,item_click_num = self._load_data_info()
         self.hot_expression = self.keep_hot_expression_item(item_expression_num)
@@ -97,12 +97,12 @@ def collate_fn(batch):
 
     return reid, out_dict
 
-def sample_neg():
+def sample_neg(item_feat_dict):
     dataset = None
     if const.sampling_strategy == 'random':
-        dataset = NegDataset(const.data_path)
+        dataset = NegDataset(const.data_path, item_feat_dict)
     elif const.sampling_strategy == 'hot':
-        dataset = HotNegDataset(const.data_path, const.hot_exp_ratio, const.hot_click_ratio)
+        dataset = HotNegDataset(const.data_path, item_feat_dict, const.hot_exp_ratio, const.hot_click_ratio)
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
     loader = DataLoader(dataset, 

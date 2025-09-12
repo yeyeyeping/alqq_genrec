@@ -3,7 +3,7 @@ import os
 from .model import ModelParam
 from pathlib import Path
 
-    
+user_cache = Path(os.environ.get('USER_CACHE_PATH'))
 
 data_path = os.environ.get('TRAIN_DATA_PATH')
 if data_path is None:
@@ -21,7 +21,7 @@ mm_emb_dim = {
     "85": 4096,
     "86": 3584,
 }
-max_seq_len = 101
+max_seq_len = 102
 # 训练相关
 l2_alpha = 1e-7
 device = "cuda"
