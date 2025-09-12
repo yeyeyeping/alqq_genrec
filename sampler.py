@@ -77,7 +77,7 @@ class HotNegDataset(Dataset):
         self.item_ids = list(range(1, len(self.item_feat_dict) + 1))
         self.popularity = torch.as_tensor(self.calc_poplurity(), dtype=torch.float32)
         # 预生成热门采样缓冲区，避免每次都在 500w 权重上采样
-        self._pop_buffer_size = max(2_000_000, 256 * 1024)
+        self._pop_buffer_size = max(1_000_000, 256 * 1024)
         self._pop_buffer = None
         self._pop_ptr = 0
         self.item_id2_time_dict = time_dict
