@@ -2,7 +2,7 @@ import torch
 from torch.nn import functional as F
 
 
-def info_nce_loss(anchor_emb, pos_emb, neg_emb, weith, temperature, return_logits=False):
+def info_nce_loss(anchor_emb, pos_emb, neg_emb, weigt, temperature, return_logits=False):
     device = anchor_emb.device
         
     true_logits = torch.sum(anchor_emb * pos_emb, dim=-1,keepdim=True)    
@@ -12,7 +12,7 @@ def info_nce_loss(anchor_emb, pos_emb, neg_emb, weith, temperature, return_logit
     
     label = torch.zeros(logits.shape[0], device=device,dtype=torch.long)                
     loss = F.cross_entropy(logits / temperature, label,reduction='none')  
-    loss = (loss * weith).sum()/weith.sum()
+    loss = (loss * weigt).sum()/weigt.sum()
     
     if return_logits:
         return loss, neg_logits.mean().item(), true_logits.mean().item(), logits
