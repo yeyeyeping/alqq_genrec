@@ -14,7 +14,7 @@ from model.model import BaselineModel
 from torch.amp import autocast, GradScaler
 from timm.scheduler import CosineLRScheduler
 from torch.nn import functional as F
-from utils import seed_everything, seed_worker, read_json
+from utils import seed_everything, seed_worker, read_json, read_pickle
 from loss import info_nce_loss,l2_reg_loss
 from mm_emb_loader import Memorymm81Embloader
 from torch.optim import SGD
@@ -182,7 +182,8 @@ if __name__ == '__main__':
     # global dataset
     seed_everything(const.seed)
     item_feat_dict = read_json(Path(const.data_path) / 'item_feat_dict.json')
-    dataset = MyDataset(const.data_path, item_feat_dict)
+    time_dict = read_pickle(const.user_cache / 'item_id2_time_dict.pkl')
+    dataset = MyDataset(const.data_path, item_feat_dict, time_dict)
     # train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
     train_loader = build_dataloader(dataset, const.batch_size, const.num_workers, True)
     # valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)
@@ -207,16 +208,9 @@ if __name__ == '__main__':
     
     global_step = 0
     total_step = const.num_epochs * len(train_loader)
-    neg_loader = iter(sample_neg(item_feat_dict))
+    neg_loader = iter(sample_neg(item_feat_dict, time_dict))
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
-    hard_neg_bank_id = torch.zeros(10000, dtype=torch.int32, device=const.device)
-    
-    hard_neg_bank_feat = {
-        k:torch.zeros(10000, dtype=torch.int32, device=const.device)
-        for k in const.item_feature.all_feature_ids
-    }
-    hard_neg_bank_feat['81'] = torch.zeros(10000, const.mm_emb_dim['81'], dtype=torch.float32, device=const.device)
     
     for epoch in range(1, const.num_epochs + 1):
         model.train()

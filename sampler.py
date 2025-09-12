@@ -9,12 +9,14 @@ import const
 import os
 import pickle
 from collections import defaultdict
+MEAN_TIME = 48.32138517426633
+MAX_TIME = 231.31589120370373
 class NegDataset(Dataset):
-    def __init__(self, data_path, item_feat_dict):
+    def __init__(self, data_path, item_feat_dict, time_dict):
         self.data_path = Path(data_path)
         self.item_feat_dict = item_feat_dict
         self.item_num = list(range(1, len(self.item_feat_dict) + 1))
-        
+        self.time_dict = time_dict
     def __len__(self):
         return 0x7FFFFFFF
     
@@ -23,8 +25,12 @@ class NegDataset(Dataset):
         neg_item_feat_list = []
         for i in random.sample(self.item_num, 256):
             neg_item_reid_list.append(i)
-            neg_item_feat_list.append(self.item_feat_dict[str(i)])
+            feat = self.item_feat_dict[str(i)]
+            feat['123'] = self.time_dict[i] if i in self.time_dict else MEAN_TIME
+            feat['123'] = int(feat['123']) + 1
+            neg_item_feat_list.append(feat)
             
+                        
         return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
                                                                                include_item=True, 
                                                                                include_context=False, 
@@ -97,12 +103,13 @@ def collate_fn(batch):
 
     return reid, out_dict
 
-def sample_neg(item_feat_dict):
+def sample_neg(item_feat_dict, time_dict):
     dataset = None
     if const.sampling_strategy == 'random':
-        dataset = NegDataset(const.data_path, item_feat_dict)
+        dataset = NegDataset(const.data_path, item_feat_dict, time_dict)
     elif const.sampling_strategy == 'hot':
-        dataset = HotNegDataset(const.data_path, item_feat_dict, const.hot_exp_ratio, const.hot_click_ratio)
+        pass
+        # dataset = HotNegDataset(const.data_path, item_feat_dict, const.hot_exp_ratio, const.hot_click_ratio)
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
     loader = DataLoader(dataset, 

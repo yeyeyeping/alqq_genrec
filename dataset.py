@@ -13,14 +13,18 @@ import random
 # from sampler import BaseSampler
 MIN_TS = 1728921670
 MAX_TS = 1748907455
+MEAN_TIME = 48.32138517426633
+MAX_TIME = 231.31589120370373
 class MyDataset(Dataset):
-    def __init__(self, data_path, item_feat_dict): 
+    def __init__(self, data_path, item_feat_dict, time_dict): 
         super().__init__()
         self.data_path = Path(data_path)
         self.seq_offsets = self.load_offset()
         self.item_feat_dict = item_feat_dict
         self.id2top20sim_dict = read_pickle(const.user_cache / 'annoyid2top20sim_dict.pkl')
+        self.item_id2_time_dict = time_dict
         self.seq_file_fp = None
+
     
     def load_offset(self):
         return read_pickle(self.data_path/'seq_offsets.pkl')
@@ -245,6 +249,10 @@ class MyDataset(Dataset):
         for i, feat, action_type, ts in ext_user_seq:
             item_id_list.append(i)
             action_type_list.append(action_type if action_type is not None else 0)
+            
+            feat['123'] = self.item_id2_time_dict[i] if i in self.item_id2_time_dict else MEAN_TIME
+            feat['123'] = int(feat['123']) + 1
+            
             feat_list.append(feat)
             
             clicked_item_list = list(front_click_item)
