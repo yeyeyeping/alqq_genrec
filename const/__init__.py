@@ -6,6 +6,11 @@ from pathlib import Path
     
 
 data_path = os.environ.get('TRAIN_DATA_PATH')
+if data_path is None:
+    print(f"Training data path is not set, switch to Test data path")
+    data_path = os.environ.get('EVAL_DATA_PATH')
+    if data_path is None:
+        raise ValueError("Test data path is not set, please set the EVAL_DATA_PATH environment variable")
 data_path = Path(data_path)
 user_cache_path = Path(os.environ.get('USER_CACHE_PATH'))
 

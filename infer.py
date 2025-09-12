@@ -1,5 +1,5 @@
 import os
-os.system(f"cd {os.environ.get('EVAL_INFER_PATH')};unzip submit_infer.zip; cp -r tmp_infer/* .")
+os.system(f"cd {os.environ.get('EVAL_INFER_PATH')};unzip submit.zip; cp -r submit/* .")
 import json
 from pathlib import Path
 from model import BaselineModel
@@ -26,8 +26,7 @@ def to_device(batch):
             batch[k] = v.to(const.device, non_blocking=True)
     return batch
 
-def next_batched_item(indexer, batch_size=512):
-    item_id2_time_dict = read_pickle(const.user_cache_path / 'item_id2_time_dict.pkl')
+def next_batched_item(indexer, item_id2_time_dict,batch_size=512):
     candidate_path = Path(os.environ.get('EVAL_DATA_PATH'), 'predict_set.jsonl')
     with open(candidate_path, 'r') as f:
         item_id_list = []
@@ -84,7 +83,8 @@ def infer():
     model.eval()
     const.max_seq_len -= 1
     # 加载数据
-    test_dataset = MyTestDataset(data_path)
+    time_dict = read_pickle(const.user_cache_path / 'item_id2_time_dict.pkl')
+    test_dataset = MyTestDataset(data_path,time_dict)
     dataloader = DataLoader(test_dataset,
                             batch_size=4096,  # 使用正确的512 
                             num_workers=16, 
@@ -98,7 +98,7 @@ def infer():
     item_features = []
     item_creative_id = []
     print(f"start to obtain item features....")
-    for item_id, feature, creative_id in next_batched_item(test_dataset.indexer['i'], const.infer_batch_size):
+    for item_id, feature, creative_id in next_batched_item(test_dataset.indexer['i'],time_dict, const.infer_batch_size):
         feature = emb_loader.add_mm_emb(item_id, feature)
         item_id = item_id.to(const.device)
         feature = to_device(feature)
