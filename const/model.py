@@ -57,7 +57,7 @@ class ModelParam:
             "204": 16, # month
             "205": 16, # day   
             "206": 16, # decay
-            "402": 16, # next action type
+            "402": 16, # action type
             "403": 16, # next action type
         }
         self.user_dnn_units = 128
