@@ -312,7 +312,7 @@ if __name__ == '__main__':
         # save_dir.mkdir(parents=True, exist_ok=True)
         
         # torch.save(model.state_dict(), save_dir / "model.pt")
-        
+        torch.cuda.empty_cache()
         gc.collect()
     print("Done")
     print(const.__dict__)

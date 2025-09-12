@@ -194,7 +194,7 @@ class MyDataset(Dataset):
             
         item_id_list = MyDataset.pad_seq(item_id_list, const.max_seq_len, 0)
         
-        ctx_nxt = torch.as_tensor(action_type_list+[1, ].copy(), dtype=torch.int32) + 1
+        ctx_nxt = torch.as_tensor(action_type_list+[1, ], dtype=torch.int32) + 1
         ctx_nxt = MyDataset.pad_seq(ctx_nxt.tolist(), const.max_seq_len, 0)
         
         action_type_list = MyDataset.pad_seq(action_type_list, const.max_seq_len, 0)
