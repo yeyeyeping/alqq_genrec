@@ -13,12 +13,15 @@ import pandas as pd
 # from sampler import BaseSampler
 MIN_TS = 1728921670
 MAX_TS = 1748907455
+MEAN_TIME = 48.32138517426633
+MAX_TIME = 231.31589120370373
 class MyDataset(Dataset):
-    def __init__(self, data_path): 
+    def __init__(self, data_path, time_dict): 
         super().__init__()
         self.data_path = Path(data_path)
         self.seq_offsets = self.load_offset()
         self.seq_file_fp = None
+        self.item_id2_time_dict = time_dict
     
     def load_offset(self):
         return read_pickle(self.data_path/'seq_offsets.pkl')
@@ -73,7 +76,6 @@ class MyDataset(Dataset):
             "204": MyDataset.pad_seq(months, const.max_seq_len, 0),
             "205": MyDataset.pad_seq(days, const.max_seq_len, 0),
             "206": MyDataset.pad_seq(delta_scaled, const.max_seq_len, 0)
-            
         }
         return out_time_feat
     
@@ -168,6 +170,9 @@ class MyDataset(Dataset):
             action_type_list.append(action_type if action_type is not None else 0)
             feat_list.append(feat)
             
+            feat['123'] = self.item_id2_time_dict[i] if i in self.item_id2_time_dict else MEAN_TIME
+            feat['123'] = int(feat['123']) + 1
+            
             clicked_item_list = list(front_click_item)
             click_seq = MyDataset.pad_seq(clicked_item_list[-const.context_feature.seq_len:].copy(), 
                                           const.context_feature.seq_len, 
@@ -198,10 +203,17 @@ class MyDataset(Dataset):
                                                     include_user=False)
                 
         time_feat = self.add_time_feat(ts_list)
+        
+        
+        action_type = torch.as_tensor(action_type_list, dtype=torch.int32)
+        item_id = torch.as_tensor(item_id_list, dtype=torch.int32)
+        action_type[item_id != 0] + 1
+        
         context_feat = {
             ** time_feat,
             "210": torch.as_tensor(seq_list, dtype=torch.int32),
             "401": torch.as_tensor(front_click_101_list, dtype=torch.int32),
+            "402":  action_type,
             "403": torch.as_tensor(ctx_nxt, dtype=torch.int32)
         }
         return action_type_list, item_id_list, item_feat_dict, context_feat

@@ -14,7 +14,7 @@ from model.model import BaselineModel
 from torch.amp import autocast, GradScaler
 from timm.scheduler import CosineLRScheduler
 from torch.nn import functional as F
-from utils import seed_everything, seed_worker
+from utils import seed_everything, seed_worker, read_pickle
 from loss import info_nce_loss,l2_reg_loss
 from mm_emb_loader import Memorymm81Embloader
 from torch.optim import SGD
@@ -28,7 +28,6 @@ def build_dataloader(dataset, batch_size, num_workers, shuffle):
         num_workers=num_workers, 
         prefetch_factor= 4,
         pin_memory=True,
-        persistent_workers=True,
         worker_init_fn=seed_worker,
     )
 
@@ -182,8 +181,8 @@ if __name__ == '__main__':
     writer = SummaryWriter(os.environ.get('TRAIN_TF_EVENTS_PATH'))
     # global dataset
     seed_everything(const.seed)
-    
-    dataset = MyDataset(const.data_path)
+    time_dict = read_pickle(const.user_cache / 'item_id2_time_dict.pkl')
+    dataset = MyDataset(const.data_path,time_dict)
     # train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
     train_loader = build_dataloader(dataset, const.batch_size, const.num_workers, True)
     # valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)
@@ -208,17 +207,9 @@ if __name__ == '__main__':
     
     global_step = 0
     total_step = const.num_epochs * len(train_loader)
-    neg_loader = iter(sample_neg())
+    neg_loader = iter(sample_neg(time_dict))
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
-    hard_neg_bank_id = torch.zeros(10000, dtype=torch.int32, device=const.device)
-    
-    hard_neg_bank_feat = {
-        k:torch.zeros(10000, dtype=torch.int32, device=const.device)
-        for k in const.item_feature.all_feature_ids
-    }
-    hard_neg_bank_feat['81'] = torch.zeros(10000, const.mm_emb_dim['81'], dtype=torch.float32, device=const.device)
-    
     for epoch in range(1, const.num_epochs + 1):
         model.train()
 

@@ -40,8 +40,9 @@ def next_batched_item(indexer, batch_size=512):
             feature, creative_id = item['features'],item['creative_id']
             item_id = indexer[creative_id] if creative_id in indexer else 0
             feature = MyTestDataset._process_cold_start_feat(feature)
-            feature['123'] = time_dict[item_id] if item_id in time_dict else MEAN_TIME
-            feature['123'] = int(feature['123']) + 1
+            if "123" in const.item_feature.sparse_feature_ids:
+                feature['123'] = time_dict[item_id] if item_id in time_dict else MEAN_TIME
+                feature['123'] = int(feature['123']) + 1
             item_id_list.append(item_id)
             feature_list.append(feature)
             creative_id_list.append(creative_id)

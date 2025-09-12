@@ -4,12 +4,14 @@ class ModelParam:
         self.embedding_table_size = self.read_feature_size(indexer_file)
         self.max_decay = 20
         self.max_diff = 20
+        self.embedding_table_size["123"] = 235
         self.embedding_table_size["201"] = self.max_diff
         self.embedding_table_size["202"] = 8
         self.embedding_table_size["203"] = 25
         self.embedding_table_size["204"] = 13
         self.embedding_table_size["205"] = 32
         self.embedding_table_size["206"] = self.max_decay
+        self.embedding_table_size["402"] = 3
         self.embedding_table_size["403"] = 3
         
         self.embedding_dim = {
@@ -30,7 +32,7 @@ class ModelParam:
             "120": 24,     # 3392
             "121": 32,    # 2135891
             "122": 32,     # 90919
-
+            "123": 32,     # 123
             # 多模态特征
             "81": 32,
             # "82": 128,
@@ -54,15 +56,17 @@ class ModelParam:
             "204": 16, # month
             "205": 16, # day   
             "206": 16, # decay
+            "402": 8, # last click item
             "403": 8
         }
         self.user_dnn_units = 128
         self.item_dnn_units = 128
         self.context_dnn_units = 128
         self.dropout = 0.2
+        self.num_experts = 8
         self.hidden_units = 256
         self.num_blocks = 16
-        self.num_heads = 4
+        self.num_heads = 8
         self.norm_first = True
         self.relative_attention_num_buckets = 32
         self.relative_attention_bucket_dim = 16
