@@ -19,7 +19,7 @@ class NegDataset(Dataset):
         # 连续 item id: [1, N]
         self._num_items = len(self.item_feat_dict)
         # 使用张量缓冲区实现接近“无放回”的均匀采样，避免 Python random 开销
-        self._uni_buffer_size = max(2_000_000, 256 * 1024)
+        self._uni_buffer_size = max(500_000, 256 * 1024)
         self._uni_buffer = None
         self._uni_ptr = 0
         
@@ -93,7 +93,7 @@ def sample_neg(item_feat_dict, time_dict):
     loader = DataLoader(dataset, 
                         batch_size=const.neg_sample_num // 256,
                         collate_fn=collate_fn,
-                        num_workers=5,
+                        num_workers=4,
                         )
     
     return loader
