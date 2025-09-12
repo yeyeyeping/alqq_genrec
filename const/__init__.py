@@ -20,7 +20,7 @@ mm_emb_dim = {
     "85": 4096,
     "86": 3584,
 }
-max_seq_len = 101
+max_seq_len = 102
 # 随机数据增强
 crop_prob = 0.2
 reorder_prob = 0.4
