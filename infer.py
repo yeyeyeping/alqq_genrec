@@ -69,6 +69,8 @@ def infer():
     torch.set_grad_enabled(False)
     
     data_path = Path(os.environ.get('EVAL_DATA_PATH'))
+    model = BaselineModel().to(const.device)
+    const.max_seq_len -= 1
     # 加载数据
     test_dataset = MyTestDataset(data_path)
     dataloader = DataLoader(test_dataset,
@@ -80,7 +82,7 @@ def infer():
     
     emb_loader = Memorymm81Embloader(data_path)
     # 加载模型
-    model = BaselineModel().to(const.device)
+
     ckpt_path = get_ckpt_path()
     print(f"load model from {ckpt_path}")
     model.load_state_dict(torch.load(ckpt_path, map_location=const.device))
