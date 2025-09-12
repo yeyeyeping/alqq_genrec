@@ -19,6 +19,7 @@ from loss import info_nce_loss,l2_reg_loss
 from mm_emb_loader import Memorymm81Embloader
 from torch.optim import SGD
 import os
+import torch.nn as nn
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 def build_dataloader(dataset, batch_size, num_workers, shuffle):
     return DataLoader(
@@ -33,18 +34,30 @@ def build_dataloader(dataset, batch_size, num_workers, shuffle):
     )
 
 def apply_model_init(model:BaselineModel):
-    for name, param in model.named_parameters():
-        try:
-            torch.nn.init.xavier_normal_(param.data)
-        except Exception:
-            pass
-    for k in model.user_tower.sparse_emb:
-        model.user_tower.sparse_emb[k].weight.data[0, :] = 0
+    def init_param(param):
+        if isinstance(param, nn.Linear):
+            nn.init.kaiming_normal_(param.weight, mode='fan_in', nonlinearity='linear')
+        
+        elif isinstance(param, nn.Embedding):
+            nn.init.normal_(param.weight, mean=0.0, std=0.02)
+            if hasattr(param, 'padding_idx') and param.padding_idx is not None:
+                param.weight.data[param.padding_idx].zero_()
+        
+        elif isinstance(param, (nn.LayerNorm, nn.RMSNorm)):
+            if hasattr(param, 'scale'):
+                nn.init.ones_(param.scale)
+            elif hasattr(param, 'weight'):
+                nn.init.ones_(param.weight)
+        else:    
+            try:
+                nn.init.xavier_normal_(param.data)
+            except Exception:
+                print(f"skip {param}")
     
-    for k in model.item_tower.sparse_emb:
-        model.item_tower.sparse_emb[k].weight.data[0, :] = 0
+    model.apply(init_param)
     
-    model.pos_embedding.weight.data[0, :] = 0
+    nn.init.constant_(model.item_tower.sparse_emb['item_id'].weight, 0)
+    nn.init.constant_(model.user_tower.sparse_emb['user_id'].weight, 0)
 
 
 def to_device(batch):
