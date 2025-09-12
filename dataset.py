@@ -16,13 +16,13 @@ import pandas as pd
 MIN_TS = 1728921670
 MAX_TS = 1748907455
 class MyDataset(Dataset):
-    def __init__(self, data_path): 
+    def __init__(self, data_path, item_feat_dict): 
         super().__init__()
         self.data_path = Path(data_path)
         self.seq_offsets = self.load_offset()
         self.seq_file_fp = None
+        self.item_feat_dict = item_feat_dict
         self.id2top20sim_dict = read_pickle(const.user_cache / 'annoyid2top20sim_dict.pkl')
-        self.item_feat_dict = read_json(self.data_path / 'item_feat_dict.json')
     def load_offset(self):
         return read_pickle(self.data_path/'seq_offsets.pkl')
         

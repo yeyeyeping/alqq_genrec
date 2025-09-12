@@ -17,6 +17,7 @@ from torch.nn import functional as F
 from utils import seed_everything, seed_worker
 from loss import info_nce_loss,l2_reg_loss
 from mm_emb_loader import Memorymm81Embloader
+from utils import read_json
 from torch.optim import SGD
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
@@ -181,8 +182,9 @@ if __name__ == '__main__':
     writer = SummaryWriter(os.environ.get('TRAIN_TF_EVENTS_PATH'))
     # global dataset
     seed_everything(const.seed)
+    item_feat_dict = read_json(Path(const.data_path )/ 'item_feat_dict.json')
+    dataset = MyDataset(const.data_path, item_feat_dict)
     
-    dataset = MyDataset(const.data_path)
     # train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
     train_loader = build_dataloader(dataset, const.batch_size, const.num_workers, True)
     # valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)
@@ -207,7 +209,7 @@ if __name__ == '__main__':
     
     global_step = 0
     total_step = const.num_epochs * len(train_loader)
-    neg_loader = iter(sample_neg())
+    neg_loader = iter(sample_neg(item_feat_dict))
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
     for epoch in range(1, const.num_epochs + 1):
