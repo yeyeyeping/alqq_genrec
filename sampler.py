@@ -18,6 +18,7 @@ class NegDataset(Dataset):
         self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
         self.item_num = list(range(1, len(self.item_feat_dict) + 1))
         self.item_id2_time_dict = item_id2_time_dict
+    
     def __len__(self):
         return 0x7FFFFFFF
     
