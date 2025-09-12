@@ -181,7 +181,12 @@ if __name__ == '__main__':
     writer = SummaryWriter(os.environ.get('TRAIN_TF_EVENTS_PATH'))
     # global dataset
     seed_everything(const.seed)
+    
     time_dict = read_pickle(const.user_cache / 'item_id2_time_dict.pkl')
+    
+    for k,v in time_dict.items():
+        time_dict[k] = int(v)
+        
     dataset = MyDataset(const.data_path,time_dict)
     # train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
     train_loader = build_dataloader(dataset, const.batch_size, const.num_workers, True)
@@ -260,6 +265,10 @@ if __name__ == '__main__':
             writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
             writer.add_scalar('train/grad_norm', grad_norm, global_step)
             global_step += 1
+            if global_step % 1000 == 0:
+                gc.collect()
+                torch.cuda.empty_cache()
+                        
         save_dir = Path(os.environ.get('TRAIN_CKPT_PATH'), f"epoch={epoch}_global_step={global_step}.training_loss={loss:.4f}.top1_correct={top1_correct:.4f}.top10_correct={top10_correct:.4f}.entropy={entropy:.4f}")
         save_dir.mkdir(parents=True, exist_ok=True)
         
@@ -304,7 +313,7 @@ if __name__ == '__main__':
         
         # torch.save(model.state_dict(), save_dir / "model.pt")
         
-        gc.collect()
+
     print("Done")
     print(const.__dict__)
     writer.close()
