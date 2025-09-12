@@ -19,6 +19,8 @@ from loss import info_nce_loss,l2_reg_loss
 from mm_emb_loader import Memorymm81Embloader
 from torch.optim import SGD
 import os
+from torch import nn
+
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 def build_dataloader(dataset, batch_size, num_workers, shuffle):
     return DataLoader(
@@ -26,24 +28,35 @@ def build_dataloader(dataset, batch_size, num_workers, shuffle):
         batch_size=batch_size, 
         shuffle=shuffle, 
         num_workers=num_workers, 
-        prefetch_factor= 4,
-        pin_memory=True,
+        # pin_memory=True,
         worker_init_fn=seed_worker,
     )
 
 def apply_model_init(model:BaselineModel):
-    for name, param in model.named_parameters():
-        try:
-            torch.nn.init.xavier_normal_(param.data)
-        except Exception:
-            pass
-    for k in model.user_tower.sparse_emb:
-        model.user_tower.sparse_emb[k].weight.data[0, :] = 0
+    def init_param(param):
+        if isinstance(param, nn.Linear):
+            nn.init.kaiming_normal_(param.weight, mode='fan_in', nonlinearity='linear')
+        
+        elif isinstance(param, nn.Embedding):
+            nn.init.normal_(param.weight, mean=0.0, std=0.02)
+            if hasattr(param, 'padding_idx') and param.padding_idx is not None:
+                param.weight.data[param.padding_idx].zero_()
+        
+        elif isinstance(param, (nn.LayerNorm, nn.RMSNorm)):
+            if hasattr(param, 'scale'):
+                nn.init.ones_(param.scale)
+            elif hasattr(param, 'weight'):
+                nn.init.ones_(param.weight)
+        else:    
+            try:
+                nn.init.xavier_normal_(param.data)
+            except Exception:
+                print(f"skip {param}")
     
-    for k in model.item_tower.sparse_emb:
-        model.item_tower.sparse_emb[k].weight.data[0, :] = 0
+    model.apply(init_param)
     
-    model.pos_embedding.weight.data[0, :] = 0
+    nn.init.constant_(model.item_tower.sparse_emb['item_id'].weight, 0)
+    nn.init.constant_(model.user_tower.sparse_emb['user_id'].weight, 0)
 
 
 def to_device(batch):
@@ -58,9 +71,9 @@ def make_input_and_label(seq_id, action_type, feat, context_feat):
     input_feat = {k:v[:,:-1] for k,v in feat.items()}
     context_feat = {k:v[:,:-1] for k,v in context_feat.items()}
     
-    label_ids = seq_id[:,1:].clone()
-    label_action_type = action_type[:,1:].clone()
-    label_feat = {k:v[:,1:].clone() for k,v in feat.items() if k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
+    label_ids = seq_id[:,1:]
+    label_action_type = action_type[:,1:]
+    label_feat = {k:v[:,1:] for k,v in feat.items() if k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
     
     return input_ids, input_action_type, input_feat, context_feat, label_ids, label_action_type, label_feat
 
@@ -83,10 +96,6 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
     user_id = user_id.to(const.device, non_blocking=True)
     user_feat,action_type, item_feat, context_feat = to_device(user_feat), action_type.to(const.device, non_blocking=True), to_device(item_feat), to_device(context_feat)
     
-    # if (hard_neg_bank_id == 0).sum() == 0:
-    #     neg_id = torch.cat([hard_neg_bank_id, neg_id])
-    #     neg_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k]]) for k in const.item_feature.all_feature_ids + list(const.item_feature.mm_emb_feature_ids)}
-
     with autocast(device_type=const.device, dtype=torch.bfloat16):        
         
         input_ids, input_action_type, input_feat, context_feat,next_ids, next_action_type, next_feat \
@@ -107,13 +116,6 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         # loss += l2_reg_loss(model,const.l2_alpha)
         
         with torch.no_grad():
-            # prob = logits.softmax(dim=-1)
-            # neg_mean_prob = prob[:,1:].mean(dim=0)
-            
-            # topk_indices = torch.topk(neg_mean_prob, k=1000, largest=True)[1]
-            # hard_neg_bank_id = torch.cat([hard_neg_bank_id, neg_id[topk_indices]])[-10000:]
-            # hard_neg_bank_feat = {k:torch.cat([hard_neg_bank_feat[k], neg_feat[k][topk_indices]])[-10000:]
-            #                       for k in hard_neg_bank_feat.keys()}
             
             top1_correct, top10_correct, entropy = compute_metrics(logits)
     return loss, neg_sim, pos_sim, top1_correct, top10_correct, entropy,neg_id.shape[0]

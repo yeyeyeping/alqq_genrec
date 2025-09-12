@@ -1,5 +1,5 @@
 import os
-os.system(f"cd {os.environ.get('EVAL_INFER_PATH')};unzip submit_infer.zip; cp -r tmp_infer/* .")
+os.system(f"cd {os.environ.get('EVAL_INFER_PATH')};unzip submit.zip; cp -r submit/* .")
 import json
 from pathlib import Path
 from model import BaselineModel
@@ -86,7 +86,8 @@ def infer():
     
     const.max_seq_len -= 1
     # 加载数据
-    test_dataset = MyTestDataset(data_path=data_path)
+    time_dict = read_pickle(const.user_cache / 'item_id2_time_dict.pkl')
+    test_dataset = MyTestDataset(data_path, time_dict)
     dataloader = DataLoader(test_dataset,
                             batch_size=4096,  # 使用正确的512 
                             num_workers=16, 
