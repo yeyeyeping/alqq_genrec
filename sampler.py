@@ -9,67 +9,83 @@ import const
 import os
 import pickle
 from collections import defaultdict
-MEAN_TIME = 48.32138517426633
-MAX_TIME = 231.31589120370373
 class NegDataset(Dataset):
-    def __init__(self, data_path, item_feat_dict, time_dict):
+    def __init__(self, data_path):
         self.data_path = Path(data_path)
-        self.item_feat_dict = item_feat_dict
-        self.time_dict = time_dict
-        # 连续 item id: [1, N]
-        self._num_items = len(self.item_feat_dict)
-        # 使用张量缓冲区实现接近“无放回”的均匀采样，避免 Python random 开销
-        self._uni_buffer_size = max(500_000, 256 * 1024)
-        self._uni_buffer = None
-        self._uni_ptr = 0
+        self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
+        self.item_num = list(range(1, len(self.item_feat_dict) + 1))
         
     def __len__(self):
         return 0x7FFFFFFF
     
     def __getitem__(self, index):
-        if self._uni_buffer is None:
-            self._refill_uniform_buffer()
         neg_item_reid_list = []
         neg_item_feat_list = []
-        # 从缓冲区取样，近似无放回（去重不足部分再补齐）
-        sampled_id = self._draw_uniform_ids(256)
-        for i in sampled_id.tolist():
+        for i in random.sample(self.item_num, 256):
             neg_item_reid_list.append(i)
-            feat = self.item_feat_dict[str(i)]
-            feat['123'] = self.time_dict[i] if i in self.time_dict else MEAN_TIME
-            feat['123'] = int(feat['123']) + 1
-            neg_item_feat_list.append(feat)
+            neg_item_feat_list.append(self.item_feat_dict[str(i)])
             
         return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
                                                                                include_item=True, 
                                                                                include_context=False, 
                                                                                include_user=False)
-    def _refill_uniform_buffer(self):
-        # 大批量有放回均匀采样，后续在 batch 级别去重
-        self._uni_buffer = torch.randint(1, self._num_items + 1, (self._uni_buffer_size,), dtype=torch.long)
-        self._uni_ptr = 0
 
-    def _draw_uniform_ids(self, k: int) -> torch.Tensor:
-        if k <= 0:
-            return torch.empty(0, dtype=torch.long)
-        # 若缓冲区不够则补充
-        if self._uni_ptr + k > self._uni_buffer.numel():
-            self._refill_uniform_buffer()
-        out = self._uni_buffer[self._uni_ptr:self._uni_ptr + k]
-        self._uni_ptr += k
-        # 尽量无放回：去重，不足部分从缓冲区补齐一次
-        if out.numel() > 1:
-            uniq = torch.unique(out, sorted=False)
-            if uniq.numel() < k:
-                need = k - uniq.numel()
-                if self._uni_ptr + need > self._uni_buffer.numel():
-                    self._refill_uniform_buffer()
-                supplement = self._uni_buffer[self._uni_ptr:self._uni_ptr + need]
-                self._uni_ptr += need
-                out = torch.cat([uniq, supplement], dim=0)
+class HotNegDataset(Dataset):
+    def __init__(self, data_path, hot_exp_ratio=0.4, hot_click_ratio=0.2):
+        self.data_path = Path(data_path)
+        self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
+        self.item_num = list(range(1, len(self.item_feat_dict) + 1))
+        item_expression_num,item_click_num = self._load_data_info()
+        self.hot_expression = self.keep_hot_expression_item(item_expression_num)
+        self.hot_click = self.keep_hot_click_item(item_click_num)
+        self.hot_expression_ratio = hot_exp_ratio
+        self.hot_click_ratio = hot_click_ratio
+        print(f"hot expression item: {len(self.hot_expression)}, hot click item: {len(self.hot_click)}")
+        
+    def __len__(self):
+        return 0x7FFFFFFF
+    
+    def keep_hot_expression_item(self,item_expression_num):
+        hot_expression_item = []
+        for k,v in item_expression_num.items():
+            if v >= 5:
+                hot_expression_item.append(k)
+        return hot_expression_item
+    
+    def keep_hot_click_item(self,item_click_num):
+        hot_click_item = []
+        for k,v in item_click_num.items():
+            if v == 1:
+                hot_click_item.append(k)
+        return hot_click_item
+        
+    def _load_data_info(self):
+        cache_path = Path(os.environ.get('USER_CACHE_PATH'))
+        
+        with open(cache_path/"data_info.pkl", "rb") as f:
+            data_info = pickle.load(f)
+        return data_info['item_expression_num'], data_info['item_click_num']
+            
+    def __getitem__(self, index):
+        neg_item_reid_list = []
+        neg_item_feat_list = []
+        for i in range(256):
+            sampled_id = 0
+            p = random.random()
+            if p < self.hot_click_ratio:
+                sampled_id = random.choice(self.hot_click)
+            elif p < self.hot_expression_ratio:
+                sampled_id = random.choice(self.hot_expression)
             else:
-                out = uniq[:k]
-        return out
+                sampled_id = random.choice(self.item_num)
+            
+            neg_item_reid_list.append(sampled_id)
+            neg_item_feat_list.append(self.item_feat_dict[str(sampled_id)])
+            
+            
+        return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
+                                                                               include_user=False, 
+                                                                               include_context=False)
 
 def collate_fn(batch):
     neg_item_reid_list, neg_item_feat_list = zip(*batch)
@@ -81,19 +97,18 @@ def collate_fn(batch):
 
     return reid, out_dict
 
-def sample_neg(item_feat_dict, time_dict):
+def sample_neg():
     dataset = None
     if const.sampling_strategy == 'random':
-        dataset = NegDataset(const.data_path, item_feat_dict, time_dict)
+        dataset = NegDataset(const.data_path)
     elif const.sampling_strategy == 'hot':
-        pass
-        # dataset = HotNegDataset(const.data_path, item_feat_dict, const.hot_exp_ratio, const.hot_click_ratio)
+        dataset = HotNegDataset(const.data_path, const.hot_exp_ratio, const.hot_click_ratio)
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
     loader = DataLoader(dataset, 
                         batch_size=const.neg_sample_num // 256,
                         collate_fn=collate_fn,
-                        num_workers=4,
+                        num_workers=5,
                         )
     
     return loader

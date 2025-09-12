@@ -5,42 +5,18 @@ import const
 from torch import nn
 from .atten import AttentionDecoder
 from .hstu import HstuAttentionDecoder      
-
-class MoEClassifier(nn.Module):
-    def __init__(self, num_experts, input_dim, hidden):
-        super().__init__()
-        self.gate = nn.Linear(input_dim, num_experts)
-        
-        self.experts = nn.ModuleList([
-            nn.Linear(input_dim, hidden)
-            for _ in range(num_experts)
-        ])
-
-
-    def forward(self, x):
-        gate_weights = F.softmax(self.gate(x)  , dim=-1)
-        expert_logits = torch.stack([expert(x) for expert in self.experts], dim=1)  
-        
-        if gate_weights.ndim == 2:
-            gate_weights = gate_weights.unsqueeze(-1)
-        else:
-            gate_weights = gate_weights.permute(0, 2, 1).unsqueeze(-1)  
-        fused_logits = (gate_weights * expert_logits).sum(dim=1)  
-        return fused_logits
-    
-    
 class UserTower(nn.Module):
     def __init__(self):
         super().__init__()
         self.sparse_emb = self.setup_embedding_layer()
-        self.dnn = MoEClassifier(const.model_param.num_experts, self.get_user_feature_dim(), const.model_param.hidden_units)
-        # self.dnn = nn.Sequential(
-        #     nn.Linear(self.get_user_feature_dim(), const.model_param.user_dnn_units),
-        #     nn.ReLU(),
-        #     # nn.LayerNorm(const.model_param.user_dnn_units),
-        #     # nn.Dropout(const.model_param.dropout),
-        #     nn.Linear(const.model_param.user_dnn_units, const.model_param.hidden_units),
-        # )
+
+        self.dnn = nn.Sequential(
+            nn.Linear(self.get_user_feature_dim(), const.model_param.user_dnn_units),
+            nn.ReLU(),
+            # nn.LayerNorm(const.model_param.user_dnn_units),
+            # nn.Dropout(const.model_param.dropout),
+            nn.Linear(const.model_param.user_dnn_units, const.model_param.hidden_units),
+        )
         
     def get_user_feature_dim(self):
         print("user feature dim: ")
@@ -93,14 +69,13 @@ class ItemTower(nn.Module):
     def __init__(self):
         super().__init__()
         self.sparse_emb = self.setup_embedding_layer()
-        self.dnn = MoEClassifier(const.model_param.num_experts, self.get_item_feature_dim(), const.model_param.hidden_units)
-        # self.dnn = nn.Sequential(
-        #     nn.Linear(self.get_item_feature_dim(), const.model_param.item_dnn_units),
-        #     nn.ReLU(),
-        #     # nn.LayerNorm(const.model_param.item_dnn_units),
-        #     # nn.Dropout(const.model_param.dropout),
-        #     nn.Linear(const.model_param.item_dnn_units, const.model_param.hidden_units),
-        # )
+        self.dnn = nn.Sequential(
+            nn.Linear(self.get_item_feature_dim(), const.model_param.item_dnn_units),
+            nn.ReLU(),
+            # nn.LayerNorm(const.model_param.item_dnn_units),
+            # nn.Dropout(const.model_param.dropout),
+            nn.Linear(const.model_param.item_dnn_units, const.model_param.hidden_units),
+        )
         self.mm_liner = self.build_mm_liner()
         
     def build_mm_liner(self,):
@@ -158,12 +133,11 @@ class ContextTower(nn.Module):
     def __init__(self, item_embedding):
         super().__init__()
         self.sparse_emb = self.setup_embedding_layer()
-        self.dnn = MoEClassifier(const.model_param.num_experts, self.get_context_feature_dim(), const.model_param.hidden_units)
-        # self.dnn = nn.Sequential(
-        #     nn.Linear(self.get_context_feature_dim(), const.model_param.context_dnn_units),
-        #     nn.ReLU(),
-        #     nn.Linear(const.model_param.context_dnn_units, const.model_param.hidden_units),
-        # )
+        self.dnn = nn.Sequential(
+            nn.Linear(self.get_context_feature_dim(), const.model_param.context_dnn_units),
+            nn.ReLU(),
+            nn.Linear(const.model_param.context_dnn_units, const.model_param.hidden_units),
+        )
         self.item_embedding = item_embedding
         
     def get_context_feature_dim(self):
@@ -185,7 +159,6 @@ class ContextTower(nn.Module):
         feat_emb_list = []
         for feat_id in const.context_feature.sparse_feature_ids:
             feat_emb_list.append(self.sparse_emb[feat_id](feature_dict[feat_id]))
-            
             # feature_dict.pop(feat_id)
         mask = (feature_dict['210'] != 0).long()
         user_seq_emb = torch.sum(self.item_embedding['item_id'](feature_dict['210']), dim=-2)
@@ -208,15 +181,12 @@ class BaselineModel(nn.Module):
         self.item_tower = ItemTower()
         self.user_tower = UserTower()
         self.context_tower = ContextTower(self.item_tower.sparse_emb)
-        self.merge_dnn = MoEClassifier(const.model_param.num_experts, const.model_param.hidden_units, const.model_param.hidden_units)
-        self.context_dnn = nn.Linear(const.model_param.hidden_units * 3, const.model_param.hidden_units)
-# 
-        # self.merge_dnn = nn.Sequential(
-            # nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units),
+        self.merge_dnn = nn.Sequential(
+            nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units),
             # nn.LayerNorm(const.model_param.hidden_units),
             # nn.Dropout(const.model_param.dropout),
-        # )
-        # self.context_dnn = nn.Linear(const.model_param.hidden_units * 3, const.model_param.hidden_units)
+        )
+        self.context_dnn = nn.Linear(const.model_param.hidden_units * 3, const.model_param.hidden_units)
         
         self.pos_embedding = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
         self.emb_dropout = nn.Dropout(const.model_param.dropout)

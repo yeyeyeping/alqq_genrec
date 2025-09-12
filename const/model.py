@@ -11,7 +11,6 @@ class ModelParam:
         self.embedding_table_size["205"] = 32
         self.embedding_table_size["206"] = self.max_decay
         self.embedding_table_size["403"] = 3
-        self.embedding_table_size["123"] = 235
         
         self.embedding_dim = {
             "user_id":64,
@@ -55,10 +54,8 @@ class ModelParam:
             "204": 16, # month
             "205": 16, # day   
             "206": 16, # decay
-            "403": 8,
-            "123": 16
+            "403": 8
         }
-        self.num_experts = 10
         self.user_dnn_units = 128
         self.item_dnn_units = 128
         self.context_dnn_units = 128

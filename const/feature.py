@@ -49,7 +49,6 @@ class  ItemFeature:
             '120',
             '121',
             '122',
-            '123',
         )
         self.dense_feature_ids = ()
         self.mm_emb_feature_ids = ("81", )
@@ -76,7 +75,7 @@ class ContextFeature:
             "403"
         )
         self.seq_len = 10
-        self.array_feature_ids = ("210", )
+        self.array_feature_ids = ("210")
         
         self.all_feature_ids = sorted(list(self.sparse_feature_ids) + list(self.array_feature_ids))
     
