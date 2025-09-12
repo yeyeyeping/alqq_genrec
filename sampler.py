@@ -71,7 +71,7 @@ MEAN_CLIK_RATE = 0.09727
 TAU = 10
 
 class HotNegDataset(Dataset):
-    def __init__(self, data_path):
+    def __init__(self, data_path, time_dict):
         self.data_path = Path(data_path)
         self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
         self.item_ids = list(range(1, len(self.item_feat_dict) + 1))
@@ -80,10 +80,8 @@ class HotNegDataset(Dataset):
         self._pop_buffer_size = max(2_000_000, 256 * 1024)
         self._pop_buffer = None
         self._pop_ptr = 0
-        self.item_id2_time_dict = self.read_item_time_dict()
+        self.item_id2_time_dict = time_dict
     
-    def read_item_time_dict(self):
-        return read_pickle(const.user_cache_path / 'item_id2_time_dict.pkl')
     def calc_poplurity(self, ):
         item_expression_num,item_click_num = self._load_data_info()
         popularity = []
@@ -168,14 +166,16 @@ def collate_fn(batch):
 
     return reid, out_dict
 
-def sample_neg():
+def sample_neg(time_dict):
     dataset = None
     if const.sampling_strategy == 'random':
-        dataset = NegDataset(const.data_path)
+        # dataset = NegDataset(const.data_path)
+        pass
     elif const.sampling_strategy == 'hot':
-        dataset = HotNegDataset(const.data_path)
+        dataset = HotNegDataset(const.data_path, time_dict)
     elif const.sampling_strategy == 'hot_expression':
         dataset = HotExpressionNegDataset(const.data_path)
+        pass
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
     loader = DataLoader(dataset, 

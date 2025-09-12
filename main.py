@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 import const
 import torch
+
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import gc
@@ -20,6 +21,7 @@ from loss import info_nce_loss,l2_reg_loss
 from mm_emb_loader import Memorymm81Embloader
 from torch.optim import SGD
 import os
+from utils import read_pickle, read_json
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 def build_dataloader(dataset, batch_size, num_workers, shuffle):
     return DataLoader(
@@ -189,8 +191,8 @@ if __name__ == '__main__':
     writer = SummaryWriter(os.environ.get('TRAIN_TF_EVENTS_PATH'))
     # global dataset
     seed_everything(const.seed)
-    
-    dataset = MyDataset(const.data_path)
+    time_dict = read_pickle(const.user_cache_path / 'item_id2_time_dict.pkl')
+    dataset = MyDataset(const.data_path, time_dict)
     # train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
     train_loader = build_dataloader(dataset, const.batch_size, const.num_workers, True)
     # valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)
@@ -215,7 +217,7 @@ if __name__ == '__main__':
     
     global_step = 0
     total_step = const.num_epochs * len(train_loader)
-    neg_loader = iter(sample_neg())
+    neg_loader = iter(sample_neg(time_dict))
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
 

@@ -16,12 +16,12 @@ MAX_TS = 1748907455
 MEAN_TIME = 48.32138517426633
 MAX_TIME = 231.31589120370373
 class MyDataset(Dataset):
-    def __init__(self, data_path): 
+    def __init__(self, data_path, time_dict): 
         super().__init__()
         self.data_path = Path(data_path)
         self.seq_offsets = self.load_offset()
         self.seq_file_fp = None
-        self.item_id2_time_dict = self.read_item_time_dict()
+        self.item_id2_time_dict = time_dict
     
     def load_offset(self):
         return read_pickle(self.data_path/'seq_offsets.pkl')
@@ -157,8 +157,6 @@ class MyDataset(Dataset):
         
         return pad_value + seq
     
-    def read_item_time_dict(self):
-        return read_pickle(const.user_cache_path / 'item_id2_time_dict.pkl')
     
     def seq2feat(self, ext_user_seq):
         item_id_list = []
