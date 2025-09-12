@@ -189,7 +189,7 @@ class BaselineModel(nn.Module):
         self.user_tower = UserTower()
         self.context_tower = ContextTower(self.item_tower.sparse_emb)
         self.merge_dnn = MoEClassifier(const.model_param.num_experts, const.model_param.hidden_units, const.model_param.hidden_units)
-        self.context_dnn = MoEClassifier(const.model_param.num_experts, const.model_param.hidden_units * 3, const.model_param.hidden_units)
+        self.context_dnn = nn.Linear(const.model_param.hidden_units * 3, const.model_param.hidden_units)
 
         
         self.pos_embedding = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)

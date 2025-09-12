@@ -31,7 +31,6 @@ def build_dataloader(dataset, batch_size, num_workers, shuffle):
         num_workers=num_workers, 
         prefetch_factor= 4,
         pin_memory=True,
-        persistent_workers=True,
         worker_init_fn=seed_worker,
     )
 
