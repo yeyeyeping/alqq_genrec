@@ -181,7 +181,7 @@ def sample_neg(time_dict):
     loader = DataLoader(dataset, 
                         batch_size=const.neg_sample_num // 256,
                         collate_fn=collate_fn,
-                        num_workers=5,
+                        num_workers=4
                         )
     
     return loader
