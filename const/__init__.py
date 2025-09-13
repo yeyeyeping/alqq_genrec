@@ -36,7 +36,7 @@ sampling_strategy = "random" # hot
 # hot_exp_ratio = 0.3
 # hot_click_ratio = 0.05
 neg_sample_num = 30000
-temperature = 0.04
+temperature = 0.03
 grad_norm = 1.0
 # 推理相关
 infer_batch_size = 512
