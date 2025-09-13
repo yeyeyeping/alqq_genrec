@@ -126,8 +126,8 @@ def infer():
         user_feat, item_feat,context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
         
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
-            next_token_emb = model(user_id, user_feat,item_id, item_feat, context_feat)
-            next_token_emb = F.normalize(next_token_emb[:,-1,:], dim=-1)
+            next_token_emb = model.predict(user_id, user_feat,item_id, item_feat, context_feat)
+            next_token_emb = F.normalize(next_token_emb, dim=-1)
             sim = next_token_emb @ item_features_tensor.T
         
         _, indices = torch.topk(sim, k = 10)

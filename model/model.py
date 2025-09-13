@@ -206,17 +206,22 @@ class BaselineModel(nn.Module):
                                                         const.model_param.relative_attention_bucket_dim,
                                                         const.model_param.relative_attention_max_distance)
         
-    def add_pos_embedding(self, seqs_id, emb, ):
-        # emb *= const.model_param.hidden_units ** 0.5
-        # valid_mask = (seqs_id != 0).long()
-        # poss = torch.cumsum(valid_mask, dim=1)
-        # poss = poss * valid_mask
-        # emb += self.pos_embedding(poss)
-        emb = self.emb_dropout(emb)
-        return emb
-    
-    
-    
+    def predict(self, user_id, user_feat,input_ids, input_feat, context_feat, multi_inference_step = 5):
+        emb = self.forward_all_feat(user_id, user_feat,input_ids, input_feat, context_feat)
+        next_few_tokens_list = []
+        attn_padding_mask = input_ids != 0
+        
+        for _ in range(multi_inference_step):
+            feat = self.emb_dropout(emb)
+            next_token = self.attention_forward(feat, attn_padding_mask)[:,-1]
+            next_few_tokens_list.append(next_token)
+            
+            feat = torch.cat([feat, next_token.unsqueeze(1)], dim=1)[:,1:]
+            attn_padding_mask = torch.cat([attn_padding_mask, torch.ones(feat.shape[0],1, dtype=torch.bool, device=feat.device)], dim=1)[:,1:]
+        
+        return torch.stack(next_few_tokens_list, dim=1).mean(dim=1)
+        
+        
     def forward_all_feat(self, user_id, user_feat,input_ids, input_feat, context_feat):
         item_feat = self.item_tower(input_ids, input_feat)
         user_feat = self.user_tower(user_id, user_feat)
@@ -225,17 +230,30 @@ class BaselineModel(nn.Module):
         seq_feat = self.context_dnn(seq_feat)
         return self.merge_dnn(seq_feat)
     
+    def attention_forward(self, feat, attention_mask_pad):
+        maxlen = attention_mask_pad.shape[1]
         
-    def forward(self, user_id, user_feat, input_ids, input_feat, context_feat):
-        emb = self.forward_all_feat(user_id, user_feat,input_ids, input_feat, context_feat)
-        feat = self.emb_dropout(emb)
-        
-        maxlen = input_ids.shape[1]
-        
-        ones_matrix = torch.ones((maxlen, maxlen), dtype=torch.bool, device=emb.device)
+        ones_matrix = torch.ones((maxlen, maxlen), dtype=torch.bool, device=feat.device)
         attention_mask_tril = torch.tril(ones_matrix)
-        attention_mask_pad = (input_ids != 0)
         attention_mask = attention_mask_tril.unsqueeze(0) & attention_mask_pad.unsqueeze(1)
         
         log_feats = self.casual_attention_layers(feat, attention_mask)
         return log_feats
+    
+    # def forward(self, user_id, user_feat, input_ids, input_feat, context_feat):
+    #     emb = self.forward_all_feat(user_id, user_feat,input_ids, input_feat, context_feat)
+    #     feat = self.emb_dropout(emb)
+        
+    #     maxlen = input_ids.shape[1]
+        
+    #     ones_matrix = torch.ones((maxlen, maxlen), dtype=torch.bool, device=emb.device)
+    #     attention_mask_tril = torch.tril(ones_matrix)
+    #     attention_mask_pad = (input_ids != 0)
+    #     attention_mask = attention_mask_tril.unsqueeze(0) & attention_mask_pad.unsqueeze(1)
+        
+    #     log_feats = self.casual_attention_layers(feat, attention_mask)
+    #     return log_feats
+    def forward(self, user_id, user_feat, input_ids, input_feat, context_feat):
+        emb = self.forward_all_feat(user_id, user_feat,input_ids, input_feat, context_feat)
+        feat = self.emb_dropout(emb)
+        return self.attention_forward(feat, input_ids != 0)
