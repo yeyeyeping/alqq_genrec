@@ -19,6 +19,7 @@ from loss import info_nce_loss,l2_reg_loss
 from mm_emb_loader import Memorymm81Embloader
 from torch.optim import SGD
 import os
+from utils import read_json
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 def build_dataloader(dataset, batch_size, num_workers, shuffle):
     return DataLoader(
@@ -101,7 +102,8 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         anchor_emb = F.normalize(next_token_emb[indices[0], indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
         neg_emb = F.normalize(neg_emb, dim=-1)
-        weight = torch.where(next_action_type[indices[0],indices[1]] == 1, 4.0, 1.0)
+        # weight = torch.where(next_action_type[indices[0],indices[1]] == 1, 4.0, 1.0)
+        weight = None
         loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, weight,const.temperature, return_logits=True)
         
         # loss += l2_reg_loss(model,const.l2_alpha)
@@ -181,13 +183,13 @@ if __name__ == '__main__':
     writer = SummaryWriter(os.environ.get('TRAIN_TF_EVENTS_PATH'))
     # global dataset
     seed_everything(const.seed)
-    
+
     time_dict = read_pickle(const.user_cache / 'item_id2_time_dict.pkl')
-    
+    item_feat = read_json(const.data_path / 'item_feat_dict.json')
     for k,v in time_dict.items():
         time_dict[k] = int(v)
         
-    dataset = MyDataset(const.data_path,time_dict)
+    dataset = MyDataset(const.data_path,item_feat,time_dict)
     # train_dataset, valid_dataset = torch.utils.data.random_split(dataset, [0.9, 0.1])
     train_loader = build_dataloader(dataset, const.batch_size, const.num_workers, True)
     # valid_loader = build_dataloader(valid_dataset, const.batch_size, const.num_workers, False)
@@ -212,7 +214,7 @@ if __name__ == '__main__':
     
     global_step = 0
     total_step = const.num_epochs * len(train_loader)
-    neg_loader = iter(sample_neg(time_dict))
+    neg_loader = iter(sample_neg(item_feat, time_dict))
     emb_loader = Memorymm81Embloader(const.data_path)
     print("Start training")
     for epoch in range(1, const.num_epochs + 1):

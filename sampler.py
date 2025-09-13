@@ -13,9 +13,9 @@ from collections import defaultdict
 MEAN_TIME = 48.32138517426633
 MAX_TIME = 231.31589120370373
 class NegDataset(Dataset):
-    def __init__(self, data_path,item_id2_time_dict):
+    def __init__(self, data_path,item_feat,item_id2_time_dict):
         self.data_path = Path(data_path)
-        self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
+        self.item_feat_dict = item_feat
         self.item_num = list(range(1, len(self.item_feat_dict) + 1))
         self.item_id2_time_dict = item_id2_time_dict
     def __len__(self):
@@ -37,12 +37,12 @@ class NegDataset(Dataset):
                                                                                include_user=False)
         
 class HotNegDataset(Dataset):
-    def __init__(self, data_path, time_dict):
+    def __init__(self, data_path, item_feat, time_dict):
         self.data_path = Path(data_path)
-        self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
-        self.item_num = list(range(1, len(self.item_feat_dict) + 1))
-        self.hot_exp_items_list, self.cold_items_list = self._load_data_info()
+        self.item_feat_dict = item_feat
         self.item_id2_time_dict = time_dict
+        
+        self.hot_exp_items_list, self.cold_items_list = self._load_data_info()
         print(f"hot expression item: {len(self.hot_exp_items_list)}, cold item: {len(self.cold_items_list)}")
         
     def __len__(self):
@@ -93,12 +93,12 @@ def collate_fn(batch):
 
     return reid, out_dict
 
-def sample_neg(time_dict):
+def sample_neg(item_feat, time_dict):
     dataset = None
     if const.sampling_strategy == 'random':
-        dataset = NegDataset(const.data_path, time_dict)
+        dataset = NegDataset(const.data_path, item_feat, time_dict)
     elif const.sampling_strategy == 'hot':
-        dataset = HotNegDataset(const.data_path,time_dict)
+        dataset = HotNegDataset(const.data_path, item_feat, time_dict)
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
     loader = DataLoader(dataset, 

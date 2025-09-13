@@ -12,7 +12,7 @@ if data_path is None:
     data_path = os.environ.get('EVAL_DATA_PATH')
     if data_path is None:
         raise ValueError("Test data path is not set, please set the EVAL_DATA_PATH environment variable")
-    
+data_path = Path(data_path)
 # 数据相关
 mm_emb_dim = {
     "81": 32,
@@ -27,13 +27,13 @@ max_seq_len = 102
 l2_alpha = 1e-7
 device = "cuda"
 batch_size = 128
-num_workers = 5
+num_workers = 4
 num_epochs = 10
 warmup_t = 2000
 lr = 2e-3
 seed = 3407
 sampling_strategy = "random" # hot
-hot_exp_ratio = 0.3
+# hot_exp_ratio = 0.3
 # hot_click_ratio = 0.05
 neg_sample_num = 30000
 temperature = 0.04
