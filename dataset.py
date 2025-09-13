@@ -235,8 +235,8 @@ class MyDataset(Dataset):
 
         
 class MyTestDataset(MyDataset):
-    def __init__(self, data_path,time_dict):
-        super().__init__(data_path,time_dict)
+    def __init__(self, data_path):
+        super().__init__(data_path)
         self.indexer = read_pickle(self.data_path / 'indexer.pkl')
         self.indexer_u_rev = {v: k for k, v in self.indexer['u'].items()}
         
