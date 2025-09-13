@@ -35,6 +35,54 @@ class NegDataset(Dataset):
                                                                                include_item=True, 
                                                                                include_context=False, 
                                                                                include_user=False)
+        
+class HotNegDataset(Dataset):
+    def __init__(self, data_path, time_dict):
+        self.data_path = Path(data_path)
+        self.item_feat_dict = read_json(self.data_path / "item_feat_dict.json")
+        self.item_num = list(range(1, len(self.item_feat_dict) + 1))
+        self.hot_exp_items_list, self.cold_items_list = self._load_data_info()
+        self.item_id2_time_dict = time_dict
+        print(f"hot expression item: {len(self.hot_exp_items_list)}, cold item: {len(self.cold_items_list)}")
+        
+    def __len__(self):
+        return 0x7FFFFFFF
+    
+    
+    def _load_data_info(self):
+        cache_path = Path(os.environ.get('USER_CACHE_PATH'))
+        
+        with open(cache_path/"data_info.pkl", "rb") as f:
+            data_info = pickle.load(f)
+        
+        hot_exp_items_list = []
+        cold_items_list = []
+        for k,v in data_info['item_expression_num'].items():
+            if v > 10:
+                hot_exp_items_list.append(k)
+            else:
+                cold_items_list.append(k)
+                 
+        return hot_exp_items_list, cold_items_list
+            
+    def __getitem__(self, index):
+        neg_item_reid_list = []
+        neg_item_feat_list = []
+        num_hot_exp = int(256 * const.hot_exp_ratio)
+        num_cold = 256 - num_hot_exp
+        hot_item_ids = random.sample(self.hot_exp_items_list, num_hot_exp)
+        cold_item_ids = random.sample(self.cold_items_list, num_cold)
+        item_ids = hot_item_ids + cold_item_ids
+        for i in item_ids:
+            neg_item_reid_list.append(i)
+            feat = self.item_feat_dict[str(i)]
+            feat['123'] = self.item_id2_time_dict[i] if i in self.item_id2_time_dict else MEAN_TIME
+            feat['123'] = int(feat['123']) + 1
+            neg_item_feat_list.append(feat)
+          
+        return torch.as_tensor(neg_item_reid_list), MyDataset.collect_features(neg_item_feat_list, 
+                                                                               include_user=False, 
+                                                                               include_context=False)
 def collate_fn(batch):
     neg_item_reid_list, neg_item_feat_list = zip(*batch)
     reid = torch.cat(neg_item_reid_list)
@@ -49,8 +97,8 @@ def sample_neg(time_dict):
     dataset = None
     if const.sampling_strategy == 'random':
         dataset = NegDataset(const.data_path, time_dict)
-    # elif const.sampling_strategy == 'hot':
-        # dataset = HotNegDataset(const.data_path, const.hot_exp_ratio, const.hot_click_ratio)
+    elif const.sampling_strategy == 'hot':
+        dataset = HotNegDataset(const.data_path,time_dict)
     else:
         raise ValueError(f"Invalid sampling strategy: {const.sampling_strategy}")
     loader = DataLoader(dataset, 
