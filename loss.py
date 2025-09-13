@@ -11,11 +11,8 @@ def info_nce_loss(anchor_emb, pos_emb, neg_emb, weight, temperature, return_logi
     logits = torch.cat([true_logits, neg_logits], dim=1)
     
     label = torch.zeros(logits.shape[0], device=device,dtype=torch.long)                
-    loss = F.cross_entropy(logits / temperature, label,reduction='none')  
-    if weight is not None:
-        loss = (loss * weight).sum()/weight.sum()
-    else:
-        loss = loss.mean()
+    loss = F.cross_entropy(logits / temperature, label)  
+    loss = (loss * weight).sum()/weight.sum()
     if return_logits:
         return loss, neg_logits.mean().item(), true_logits.mean().item(), logits
     else:

@@ -56,6 +56,7 @@ class Memorymm81Embloader:
             item_mask = torch.ones_like(seq_id, dtype=torch.bool)
         
         mm_emb = self.batch_load_emb((seq_id * item_mask).reshape(-1).tolist())
+        
         if seq_id.ndim == 2:
             feat['81'] = mm_emb.reshape(seq_id.shape[0], seq_id.shape[1], self.feat_size)
         else:

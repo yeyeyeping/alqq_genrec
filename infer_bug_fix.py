@@ -1,4 +1,3 @@
-from operator import index
 import os
 os.system(f"cd {os.environ.get('EVAL_INFER_PATH')};unzip submit.zip; cp -r submit/* .")
 import json
@@ -35,24 +34,21 @@ def next_batched_item(mm_emb_dict, indexer, batch_size=512):
         item_id_list = []
         feature_list = []
         creative_id_list = []
-        mm_feat_emb = []
-        
         for i, line in enumerate(f):
             item = json.loads(line)
             
             feature, creative_id = item['features'],item['creative_id']
             item_id = indexer[creative_id] if creative_id in indexer else 0
             feature = MyTestDataset._process_cold_start_feat(feature)
-           
             if "123" in const.item_feature.sparse_feature_ids:
                 feature['123'] = time_dict[item_id] if item_id in time_dict else MEAN_TIME
                 feature['123'] = int(feature['123']) + 1
-                
-            if creative_id in mm_emb_dict:
-                mm_feat_emb.append(torch.as_tensor(mm_emb_dict[creative_id],dtype=torch.float32))    
-            else:
-                mm_feat_emb.append(torch.zeros(32,dtype=torch.float32))
             
+            if creative_id in mm_emb_dict:
+                feature['81'] = torch.as_tensor(mm_emb_dict[creative_id],dtype=torch.float32)    
+            else:
+                feature['81'] = torch.zeros(32,dtype=torch.float32)
+                
             item_id_list.append(item_id)
             feature_list.append(feature)
             creative_id_list.append(creative_id)
@@ -65,13 +61,10 @@ def next_batched_item(mm_emb_dict, indexer, batch_size=512):
                                                             include_context=False, 
                                                             include_user=False)
                 creative_id_tensor = torch.as_tensor(creative_id_list)
-                mm_feat_emb_tensor = torch.stack(mm_feat_emb, dim=0)
-                feature_tensor['81'] = mm_feat_emb_tensor
                 yield item_id_tensor, feature_tensor, creative_id_tensor
                 item_id_list.clear()
                 feature_list.clear()
                 creative_id_list.clear()
-                mm_feat_emb.clear()
         
         # Yield any remaining items
         if item_id_list:
@@ -81,8 +74,6 @@ def next_batched_item(mm_emb_dict, indexer, batch_size=512):
                                                             include_context=False, 
                                                             include_user=False)
             creative_id_tensor = torch.as_tensor(creative_id_list)
-            mm_feat_emb_tensor = torch.stack(mm_feat_emb, dim=0)
-            feature_tensor['81'] = mm_feat_emb_tensor
             yield item_id_tensor, feature_tensor, creative_id_tensor
             
     
@@ -90,7 +81,7 @@ def next_batched_item(mm_emb_dict, indexer, batch_size=512):
 def infer():
     torch.set_grad_enabled(False)
     
-    data_path = Path(os.environ.get('EVAL_DATA_PATH'))
+    data_path = os.environ.get('EVAL_DATA_PATH')
     mm_emb_dict = read_pickle(data_path/"creative_emb" / "emb_81_32.pkl")
     # 加载模型
     model = BaselineModel().to(const.device)
@@ -116,7 +107,9 @@ def infer():
     item_creative_id = []
     print(f"start to obtain item features....")
     for item_id, feature, creative_id in next_batched_item(mm_emb_dict, test_dataset.indexer['i'], const.infer_batch_size):
-        feature = emb_loader.add_mm_emb(item_id, feature)
+        
+        
+        emb_loader.add_mm_emb(item_id, feature)
         item_id = item_id.to(const.device)
         feature = to_device(feature)
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
