@@ -111,8 +111,7 @@ def train_one_step(batch, emb_loader, loader, model:BaselineModel):
         anchor_emb = F.normalize(next_token_emb[indices[0], indices[1],:],dim=-1)
         pos_emb = F.normalize(pos_emb[indices[0],indices[1],:],dim=-1)
         neg_emb = F.normalize(neg_emb, dim=-1)
-        weight = torch.where(next_action_type[indices[0],indices[1]] == 1, 1.0, 0.0)
-        loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, weight,const.temperature, return_logits=True)
+        loss, neg_sim, pos_sim, logits = info_nce_loss(anchor_emb, pos_emb, neg_emb, const.temperature, return_logits=True)
         
         # loss += l2_reg_loss(model,const.l2_alpha)
         

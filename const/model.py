@@ -16,7 +16,7 @@ class ModelParam:
         
         self.embedding_dim = {
             "user_id":128,
-            "item_id":128,
+            "item_id":160,
             # 物品特征
             "100": 16,      # 6
             "101": 16,     # 51
@@ -59,14 +59,14 @@ class ModelParam:
             "402": 16, # last click item
             "403": 16
         }
-        self.user_dnn_units = 128
-        self.item_dnn_units = 128
-        self.context_dnn_units = 128
+        self.user_dnn_units = 256
+        self.item_dnn_units = 256
+        self.context_dnn_units = 256
         self.dropout = 0.2
-        self.num_experts = 8
-        self.hidden_units = 256
-        self.num_blocks = 32
-        self.num_heads = 16
+        self.num_experts = 10
+        self.hidden_units = 512
+        self.num_blocks = 12
+        self.num_heads = 8
         self.norm_first = True
         self.relative_attention_num_buckets = 32
         self.relative_attention_bucket_dim = 32

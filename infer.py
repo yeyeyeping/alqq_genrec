@@ -16,6 +16,8 @@ import gc
 from utils import read_pickle
 MEAN_TIME = 48.32138517426633
 MAX_TIME = 231.31589120370373
+MEAN_CLIK_RATE = 0.09727
+TAU = 10
 def collect_all_creative_embedding(mm_emb_dict):
     all_ids = []
     all_embeddings = []
@@ -73,6 +75,7 @@ def read_item_expression_dict():
     cache_path = Path(os.environ.get('USER_CACHE_PATH'))
     data_info = read_pickle(cache_path/"data_info.pkl")
     return data_info['item_expression_num'],data_info['item_click_num']
+
 def get_ckpt_path():
     ckpt_path = os.environ.get("MODEL_OUTPUT_PATH")
     if ckpt_path is None:
@@ -187,7 +190,6 @@ def infer():
     item_creative_id = []
     print(f"start to obtain item features....")
     for item_id, feature, creative_id in next_batched_item(mm_emb_dict, top20similar_item_dict, test_dataset.indexer['i'], const.infer_batch_size):
-        # feature = emb_loader.add_mm_emb(item_id, feature)
         item_id = item_id.to(const.device)
         feature = to_device(feature)
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
@@ -217,7 +219,7 @@ def infer():
             next_token_emb = F.normalize(next_token_emb[:,-1,:], dim=-1)
             sim = next_token_emb @ item_features_tensor.T
         
-        top10_sim, indices = torch.topk(sim, k = 10)
+        top10_sim, indices = torch.topk(sim, k = 20)
         top10_sim= top10_sim / 2 + 0.5
         top10_item_ids += item_creative_id_tensor[indices.cpu()].tolist()
         top10_sim_scores += top10_sim.cpu().tolist()
@@ -232,9 +234,17 @@ def infer():
     
     t = time.time()
     for i, (sim_score, items) in enumerate(zip(top10_sim_scores, top10_item_ids)):
-        expr = [s + (item_click_dict.get(x, 0)/item_expression_dict.get(x, 1)) for (s, x) in zip(sim_score, items)]
-        sorted_ids, _ = zip(*sorted(zip(items, expr), key=lambda x: x[1], reverse=True))
-        top10_item_ids[i] = list(sorted_ids)
+        ctr_list = []
+        for x in items:
+            reid = test_dataset.indexer['i'].get(x, -1)
+            c, e = item_click_dict.get(reid, 0),item_expression_dict.get(reid, 1)
+            # 贝叶斯修正
+            ctr_list.append((c + MEAN_CLIK_RATE * TAU) / (e + TAU))
+        sim_score = torch.as_tensor(sim_score).softmax(dim=-1)    
+        ctr_score = torch.as_tensor(ctr_list).softmax(dim=-1)
+        score_list = (sim_score + ctr_score).tolist()
+        sorted_ids, _ = zip(*sorted(zip(items, score_list), key=lambda x: x[1], reverse=True))
+        top10_item_ids[i] = list(sorted_ids[:10])
         
     print(f"sort done, time cost: {time.time() - t}")
     
