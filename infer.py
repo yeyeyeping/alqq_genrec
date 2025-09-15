@@ -1,4 +1,3 @@
-from operator import index
 import os
 os.system(f"cd {os.environ.get('EVAL_INFER_PATH')};unzip submit.zip; cp -r submit/* .")
 import json
@@ -14,6 +13,8 @@ import time
 import numpy as np
 import gc
 from utils import read_pickle
+
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 MEAN_TIME = 48.32138517426633
 MAX_TIME = 231.31589120370373
 MEAN_CLIK_RATE = 0.09727
@@ -90,6 +91,7 @@ def to_device(batch):
     return batch
 
 def next_batched_item(mm_emb_dict, top20similar_item_dict, indexer, batch_size=512):
+    global cold_st_item, item_no_emb
     time_dict = read_pickle(const.user_cache / 'item_id2_time_dict.pkl')
     candidate_path = Path(os.environ.get('EVAL_DATA_PATH'), 'predict_set.jsonl')
     with open(candidate_path, 'r') as f:
@@ -105,6 +107,7 @@ def next_batched_item(mm_emb_dict, top20similar_item_dict, indexer, batch_size=5
             feature = MyTestDataset._process_cold_start_feat(feature)
             #冷启动物品
             if creative_id not in indexer:
+                cold_st_item += 1
                 # 找到最相似的物品，id赋予他
                 item_id = 0
                 sim_item_list = top20similar_item_dict.get(creative_id, [0, ])
@@ -123,6 +126,7 @@ def next_batched_item(mm_emb_dict, top20similar_item_dict, indexer, batch_size=5
             if creative_id in mm_emb_dict:
                 mm_feat_emb.append(torch.as_tensor(mm_emb_dict[creative_id],dtype=torch.float32))    
             else:
+                item_no_emb += 1
                 mm_feat_emb.append(torch.zeros(32,dtype=torch.float32))
             
             item_id_list.append(item_id)
@@ -158,10 +162,11 @@ def next_batched_item(mm_emb_dict, top20similar_item_dict, indexer, batch_size=5
             yield item_id_tensor, feature_tensor, creative_id_tensor
             
     
-    
+cold_st_item = 0
+item_no_emb = 0
 def infer():
     torch.set_grad_enabled(False)
-    
+
     data_path = Path(os.environ.get('EVAL_DATA_PATH'))
     mm_emb_dict = read_pickle(data_path/"creative_emb" / "emb_81_32.pkl")
     top20similar_item_dict = top20similar_item()
@@ -196,17 +201,19 @@ def infer():
             item_emb = F.normalize(model.item_tower(item_id, feature), dim=-1)
         item_features.append(item_emb)
         item_creative_id.append(creative_id)
-    print(f"loadding {len(item_features)} item features")
     item_features_tensor = torch.cat(item_features, dim=0).to(const.device)
     item_creative_id_tensor = torch.cat(item_creative_id, dim=0)
     print(f"loadding {len(item_creative_id_tensor)} item features")
     print(f"item feature: {item_features_tensor[:10]}")
     print(f"creative id: {item_creative_id_tensor[:10]}")    
-    
+    print(f"cold start item: {cold_st_item}")
+    print(f"item no emb: {item_no_emb}")
 
     user_id_list = []
-    top10_item_ids = []
-    top10_sim_scores = []
+    top10_click_item_ids = []
+    top10_exp_item_ids = []
+    top10_click_sim_scores = []
+    top10_exp_sim_scores = []
     t = time.time()
     print(f"start to predict {len(dataloader) * dataloader.batch_size} user seqs")
     for str_user_id, user_id, user_feat, action_type, item_id, item_feat, context_feat in dataloader:
@@ -215,38 +222,69 @@ def infer():
         user_feat, item_feat,context_feat = to_device(user_feat), to_device(item_feat), to_device(context_feat)
         
         with torch.amp.autocast(device_type=const.device, dtype=torch.bfloat16):
-            next_token_emb = model(user_id, user_feat,item_id, item_feat, context_feat)
-            next_token_emb = F.normalize(next_token_emb[:,-1,:], dim=-1)
-            sim = next_token_emb @ item_features_tensor.T
+            next_click_emb = model.predict(user_id, user_feat,item_id, item_feat, context_feat)
+            next_click_emb = F.normalize(next_click_emb, dim=-1)
+            context_feat['403'][:,-1] = 1
+            next_exp_emb = model.predict(user_id, user_feat,item_id, item_feat, context_feat)
+            next_exp_emb = F.normalize(next_exp_emb, dim=-1)
+            
+            sim_click = next_click_emb @ item_features_tensor.T
+            sim_exp = next_exp_emb @ item_features_tensor.T
+            
+        top10_click_sim, indices_click = torch.topk(sim_click, k = 8)
+        top10_exp_sim, indices_exp = torch.topk(sim_exp, k = 10)
         
-        top10_sim, indices = torch.topk(sim, k = 20)
-        top10_sim= top10_sim / 2 + 0.5
-        top10_item_ids += item_creative_id_tensor[indices.cpu()].tolist()
-        top10_sim_scores += top10_sim.cpu().tolist()
+        top10_click_sim = top10_click_sim / 2 + 0.5
+        top10_exp_sim = top10_exp_sim / 2 + 0.5
+        
+        
+        
+        top10_click_item_ids += item_creative_id_tensor[indices_click.cpu()].tolist()
+        top10_click_sim_scores += top10_click_sim.cpu().tolist()
+        
+        top10_exp_item_ids += item_creative_id_tensor[indices_exp.cpu()].tolist()
+        top10_exp_sim_scores += top10_exp_sim.cpu().tolist()
         user_id_list += str_user_id
     gc.collect()
-    print(f"prediction done, time cost: {time.time() - t}")
-    print(f"{top10_item_ids[:10]}")
-    print(f"{top10_sim_scores[:10]}")
     print(f"{user_id_list[:10]}")
+    print(f"prediction done, time cost: {time.time() - t}")
+    print(f"top10_click_item_ids: {top10_click_item_ids[:10]}")
+    print(f"top10_click_sim_scores: {top10_click_sim_scores[:10]}")
     
-    print("start to sort top10 item according to expression")
+    print(f"top10_exp_item_ids: {top10_exp_item_ids[:10]}")
+    print(f"top10_exp_sim_scores: {top10_exp_sim_scores[:10]}")
     
-    t = time.time()
-    for i, (sim_score, items) in enumerate(zip(top10_sim_scores, top10_item_ids)):
-        ctr_list = []
-        for x in items:
-            reid = test_dataset.indexer['i'].get(x, -1)
-            c, e = item_click_dict.get(reid, 0),item_expression_dict.get(reid, 1)
-            # 贝叶斯修正
-            ctr_list.append((c + MEAN_CLIK_RATE * TAU) / (e + TAU))
-        sim_score = torch.as_tensor(sim_score).softmax(dim=-1)    
-        ctr_score = torch.as_tensor(ctr_list).softmax(dim=-1)
-        score_list = (sim_score + ctr_score).tolist()
-        sorted_ids, _ = zip(*sorted(zip(items, score_list), key=lambda x: x[1], reverse=True))
-        top10_item_ids[i] = list(sorted_ids[:10])
+    
+    def sort_top10_item(top10_item_ids, top10_sim_scores):
+        for i, (sim_score, items) in enumerate(zip(top10_sim_scores, top10_item_ids)):
+            ctr_list = []
+            for x in items:
+                reid = test_dataset.indexer['i'].get(x, -1)
+                c, e = item_click_dict.get(reid, 0),item_expression_dict.get(reid, 1)
+                ctr_list.append(1.0 * c/e)
+            sim_score = torch.as_tensor(sim_score).softmax(dim=-1)    
+            ctr_score = torch.as_tensor(ctr_list).softmax(dim=-1)
+            score_list = (sim_score * 0.8 + ctr_score * 0.2).tolist()
+            sorted_ids, _ = zip(*sorted(zip(items, score_list), key=lambda x: x[1], reverse=True))
+            top10_item_ids[i] = list(sorted_ids[:10])
+        return top10_item_ids
         
-    print(f"sort done, time cost: {time.time() - t}")
+    print("start to sort top10 item according to expression")
+    t = time.time()
+    top10_click_item_ids = sort_top10_item(top10_click_item_ids, top10_click_sim_scores)
+    top10_exp_item_ids = sort_top10_item(top10_exp_item_ids, top10_exp_sim_scores)
+    final_top10_item_ids = []
     
-    return top10_item_ids, user_id_list
+    for i in range(len(top10_click_item_ids)):
+        top10_click = top10_click_item_ids[i]
+        top10_exp = top10_exp_item_ids[i]
+        for i in top10_exp:
+            if i not in top10_click[:6]:
+                top10_click.append(i)
+        
+        final_top10_item_ids.append(top10_click[:10])        
+    print(f"sort done, time cost: {time.time() - t}")
+    print(f"user_id_list: {user_id_list[:10]}")
+    print(f"final_top10_item_ids: {final_top10_item_ids[:10]}")
+    return final_top10_item_ids, user_id_list
     

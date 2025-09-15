@@ -5,27 +5,14 @@ import const
 from torch import nn
 from .atten import AttentionDecoder
 from .hstu import HstuAttentionDecoder      
-class LinearBlock(nn.Module):
-    def __init__(self, input_dim, hidden_dim, out_dim):
-        super().__init__()
-        self.dnn_out2hidden = nn.Linear(input_dim, hidden_dim)
-        self.relu = nn.ReLU()
-        self.hidden2out = nn.Linear(hidden_dim, out_dim)
-        
-    def forward(self, x):
-        x = self.dnn_out2hidden(x)
-        x = self.relu(x)
-        x = self.hidden2out(x)
-        return x
-        
-        
+
 class MoEClassifier(nn.Module):
-    def __init__(self,num_experts, moe_input_dim, expert_layer,  **kwargs):
+    def __init__(self, num_experts, input_dim, hidden):
         super().__init__()
-        self.gate = nn.Linear(moe_input_dim, num_experts)
+        self.gate = nn.Linear(input_dim, num_experts)
         
         self.experts = nn.ModuleList([
-            expert_layer(**kwargs)
+            nn.Linear(input_dim, hidden)
             for _ in range(num_experts)
         ])
 
@@ -46,17 +33,7 @@ class UserTower(nn.Module):
         super().__init__()
         self.sparse_emb = self.setup_embedding_layer()
 
-        self.dnn = MoEClassifier(
-                                const.model_param.num_experts,
-                                    self.get_user_feature_dim(), 
-                                 LinearBlock,
-                                 
-                                 **dict(
-                                     input_dim=self.get_user_feature_dim(), 
-                                     hidden_dim=const.model_param.user_dnn_units, 
-                                        out_dim=const.model_param.hidden_units
-                                        )
-                                 )
+        self.dnn = MoEClassifier(const.model_param.num_experts, self.get_user_feature_dim(), const.model_param.hidden_units)
         
     def get_user_feature_dim(self):
         print("user feature dim: ")
@@ -109,16 +86,8 @@ class ItemTower(nn.Module):
     def __init__(self):
         super().__init__()
         self.sparse_emb = self.setup_embedding_layer()
-        self.dnn = MoEClassifier(const.model_param.num_experts, 
-                                 self.get_item_feature_dim(),
-                                 LinearBlock, 
-                                 **dict(
-                                     input_dim=self.get_item_feature_dim(), 
-                                     hidden_dim=const.model_param.item_dnn_units, 
-                                        out_dim=const.model_param.hidden_units
-                                        ))
+        self.dnn = MoEClassifier(const.model_param.num_experts, self.get_item_feature_dim(), const.model_param.hidden_units)
         self.mm_liner = self.build_mm_liner()
-        self.dropout = nn.Dropout(const.model_param.dropout)
         
     def build_mm_liner(self,):
         mm_liner = nn.ModuleDict()
@@ -153,7 +122,7 @@ class ItemTower(nn.Module):
         return emb_dict
         
     def forward(self, seq_id, feature_dict):
-        id_embedding = self.dropout(self.sparse_emb['item_id'](seq_id))
+        id_embedding = self.sparse_emb['item_id'](seq_id)
         
         feat_emb_list = [id_embedding, ]
         
@@ -175,13 +144,7 @@ class ContextTower(nn.Module):
     def __init__(self, item_embedding):
         super().__init__()
         self.sparse_emb = self.setup_embedding_layer()
-        self.dnn = MoEClassifier(const.model_param.num_experts, 
-                                 self.get_context_feature_dim(),
-                                 LinearBlock,
-                                 **dict(
-                                     input_dim=self.get_context_feature_dim(),
-                                     hidden_dim=const.model_param.context_dnn_units, 
-                                 out_dim=const.model_param.hidden_units))
+        self.dnn = MoEClassifier(const.model_param.num_experts, self.get_context_feature_dim(), const.model_param.hidden_units)
         self.item_embedding = item_embedding
         
     def get_context_feature_dim(self):
@@ -225,12 +188,11 @@ class BaselineModel(nn.Module):
         self.item_tower = ItemTower()
         self.user_tower = UserTower()
         self.context_tower = ContextTower(self.item_tower.sparse_emb)
-        self.merge_dnn = MoEClassifier(const.model_param.num_experts,
-                                       const.model_param.hidden_units, 
-                                       nn.Linear,
-                                       **dict(in_features=const.model_param.hidden_units,
-                                       out_features=const.model_param.hidden_units)
-                                       )
+        self.merge_dnn = nn.Sequential(
+            nn.Linear(const.model_param.hidden_units, const.model_param.hidden_units),
+            # nn.LayerNorm(const.model_param.hidden_units),
+            # nn.Dropout(const.model_param.dropout),
+        )
         self.context_dnn = nn.Linear(const.model_param.hidden_units * 3, const.model_param.hidden_units)
         
         self.pos_embedding = nn.Embedding(const.max_seq_len + 1, const.model_param.hidden_units, padding_idx=0)
@@ -244,16 +206,6 @@ class BaselineModel(nn.Module):
                                                         const.model_param.relative_attention_bucket_dim,
                                                         const.model_param.relative_attention_max_distance)
         
-    def add_pos_embedding(self, seqs_id, emb, ):
-        # emb *= const.model_param.hidden_units ** 0.5
-        # valid_mask = (seqs_id != 0).long()
-        # poss = torch.cumsum(valid_mask, dim=1)
-        # poss = poss * valid_mask
-        # emb += self.pos_embedding(poss)
-        emb = self.emb_dropout(emb)
-        return emb
-    
-    
     
     def forward_all_feat(self, user_id, user_feat,input_ids, input_feat, context_feat):
         item_feat = self.item_tower(input_ids, input_feat)
@@ -264,16 +216,40 @@ class BaselineModel(nn.Module):
         return self.merge_dnn(seq_feat)
     
         
-    def forward(self, user_id, user_feat, input_ids, input_feat, context_feat):
+    def predict(self, user_id, user_feat,input_ids, input_feat, context_feat, multi_inference_step = 5):
         emb = self.forward_all_feat(user_id, user_feat,input_ids, input_feat, context_feat)
-        feat = self.emb_dropout(emb)
+        next_few_tokens_list = []
+        attn_padding_mask = input_ids != 0
         
-        maxlen = input_ids.shape[1]
+        for _ in range(multi_inference_step):
+            feat = self.emb_dropout(emb)
+            next_token = self.attention_forward(feat, attn_padding_mask)[:,-1]
+            next_few_tokens_list.append(next_token)
+            
+            feat = torch.cat([feat, next_token.unsqueeze(1)], dim=1)[:,1:]
+            attn_padding_mask = torch.cat([attn_padding_mask, torch.ones(feat.shape[0],1, dtype=torch.bool, device=feat.device)], dim=1)[:,1:]
+        return torch.stack(next_few_tokens_list, dim=1).mean(dim=1)
         
-        ones_matrix = torch.ones((maxlen, maxlen), dtype=torch.bool, device=emb.device)
+        
+    def forward_all_feat(self, user_id, user_feat,input_ids, input_feat, context_feat):
+        item_feat = self.item_tower(input_ids, input_feat)
+        user_feat = self.user_tower(user_id, user_feat)
+        context_feat = self.context_tower(context_feat)
+        seq_feat = torch.cat([item_feat, user_feat[:,None].repeat(1,item_feat.shape[1],1),context_feat], dim=-1)
+        seq_feat = self.context_dnn(seq_feat)
+        return self.merge_dnn(seq_feat)
+    
+    def attention_forward(self, feat, attention_mask_pad):
+        maxlen = attention_mask_pad.shape[1]
+        
+        ones_matrix = torch.ones((maxlen, maxlen), dtype=torch.bool, device=feat.device)
         attention_mask_tril = torch.tril(ones_matrix)
-        attention_mask_pad = (input_ids != 0)
         attention_mask = attention_mask_tril.unsqueeze(0) & attention_mask_pad.unsqueeze(1)
         
         log_feats = self.casual_attention_layers(feat, attention_mask)
         return log_feats
+    
+    def forward(self, user_id, user_feat, input_ids, input_feat, context_feat):
+        emb = self.forward_all_feat(user_id, user_feat,input_ids, input_feat, context_feat)
+        feat = self.emb_dropout(emb)
+        return self.attention_forward(feat, input_ids != 0)

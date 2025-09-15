@@ -7,7 +7,7 @@ from collections import defaultdict
 import torch
 from datetime import datetime
 import pandas as pd
-
+import random
 # from torch.utils.data._utils.collate import default_collate
 # import numpy as np
 # from sampler import BaseSampler
@@ -155,6 +155,61 @@ class MyDataset(Dataset):
             raise ValueError(f"Invalid sequence type: {type(seq)}")
         
         return pad_value + seq
+    def random_crop_seq(self, ext_seq):
+        seq_len = len(ext_seq)
+        num_crop = random.randint(seq_len // 20, seq_len // 10)
+        # 随机删除5-20%序列
+        p = random.random()
+        # 删除前面的5-20%
+        if p < 0.4:
+            # 删除前面的5-20%
+            ext_seq = ext_seq[num_crop:]
+        elif p < 0.8:
+            #随机删除
+            random_removed_idx = random.sample(range(len(ext_seq)), num_crop)
+            # 随机删除但保留点击序列
+            ext_seq = [ext_seq[i] for i in range(len(ext_seq)) if i not in random_removed_idx or ext_seq[i][2] == 1] 
+            
+        else:
+            # 删除后面的5-20%
+            ext_seq = ext_seq[:-num_crop]
+        return ext_seq
+    
+    def seq_mask(self, ext_seq):
+        selected_seq = random.sample(ext_seq, random.randint(1, 5))
+        for _, feat, action_type, _ in selected_seq:
+            if action_type == 1:
+                continue
+            seleted_feat_key = random.sample(list(feat.keys()), 1)
+            
+            for seleted_feat_key in seleted_feat_key:
+                if seleted_feat_key in feat:
+                    feat.pop(seleted_feat_key)
+        return ext_seq
+    
+    def seq_replace_with_empty_feat(self, ext_seq):
+        selected_seq = random.sample(list(range(len(ext_seq))), random.randint(1, 5))
+        for i in selected_seq:
+            if ext_seq[i][2] == 1:
+                continue
+            if random.random() < 0.7:
+                ext_seq[i] = (ext_seq[i][0], {}, ext_seq[i][2], ext_seq[i][3])
+            else:
+                ext_seq[i] = (0, ext_seq[i][1], ext_seq[i][2], ext_seq[i][3])
+        
+        return ext_seq
+    
+    def aug_seq(self, ext_seq):
+        if len(ext_seq) < 30 or random.random() < 0.4:
+            return ext_seq
+        
+        p = random.random()
+        if p < 0.2:
+            return self.random_crop_seq(ext_seq)
+        elif p < 0.6:
+            return self.seq_mask(ext_seq)
+        else:
+            return self.seq_replace_with_empty_feat(ext_seq)
     
     def seq2feat(self, ext_user_seq):
         item_id_list = []
@@ -184,7 +239,7 @@ class MyDataset(Dataset):
             if action_type == 1:
                 front_click_item.add(i)
                 front_click_101 = feat.get("101", front_click_101)
-                
+
             ts_list.append(ts)
             
         item_id_list = MyDataset.pad_seq(item_id_list, const.max_seq_len, 0)
@@ -207,7 +262,7 @@ class MyDataset(Dataset):
         
         action_type = torch.as_tensor(action_type_list, dtype=torch.int32)
         item_id = torch.as_tensor(item_id_list, dtype=torch.int32)
-        action_type[item_id != 0] + 1
+        action_type[item_id != 0] = action_type[item_id != 0] + 1
         
         context_feat = {
             ** time_feat,
@@ -221,7 +276,7 @@ class MyDataset(Dataset):
     def __getitem__(self, index):
         user_seq = self._load_user_data(index)
         user_id, user_feat, ext_user_seq = self.format_user_seq(user_seq)
-        
+        ext_user_seq = self.aug_seq(ext_user_seq)
         user_feat = MyDataset.fill_feature(user_feat, 
                                            include_user=True, 
                                            include_item=False, 

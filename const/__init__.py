@@ -33,9 +33,9 @@ warmup_t = 2000
 lr = 2e-3
 seed = 3407
 sampling_strategy = "random" # hot
-hot_exp_ratio = 0.3
+# hot_exp_ratio = 0.3
 # hot_click_ratio = 0.05
-neg_sample_num = 30000
+neg_sample_num = 40000
 temperature = 0.04
 grad_norm = 1.0
 # 推理相关
