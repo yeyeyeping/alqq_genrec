@@ -2,4 +2,4 @@
 + infonce + 三塔结构 + 自定义embedding大小: 69
 + 时间: 81 
 + hstu: 83 
-+ loss_weight + conditional generation(next action) + moe 96
++ 分配点击和曝光不同的损失权重 + conditional generation(next action) + moe头：96
